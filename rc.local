@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here if you don't
+# want to do the full Sys V style init stuff.
+
+touch /var/lock/subsys/local
+
+# Insert firewire modules and set directories to allow user-level access.
+/sbin/modprobe raw1394
+/sbin/modprobe video1394
+
+# Put in a sleep to (allow modprobes to finish?), then change permissions.
+sleep 3 
+/bin/chmod 666 /dev/raw1394
+/bin/chmod 777 /dev/video1394
+/bin/chmod 666 /dev/video1394/0
+
+# Run camera script.
+/home/ads/startCamera
+
