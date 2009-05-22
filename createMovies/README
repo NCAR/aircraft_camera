@@ -1,0 +1,8 @@
+
+To Be Done
+----------
+
+- Modify movie.pl and combineCameras.pl to name the output mp4 
+fltno.[FWD|DOWN|FWD_DOWN].YYYYMMDD.hhmmss_hhmmss.mp4 
+instead of fltno.mp4
+
