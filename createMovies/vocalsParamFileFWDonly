@@ -1,0 +1,27 @@
+netcdfFile = /scr/raf2/Prod_Data/VOCALS/VOCALS####.nc 
+imageDirectory = /scr/raf2/Raw_Data/VOCALS/Camera/116####_fwd
+cameraName = Axis
+outputResolution=720x390
+outputFrameRate = 15
+mp4BitRate = 1500000
+scale = 512x384!
+fontSize = 12
+endParameters
+
+ALTX
+LATC
+LONC
+ATX
+PSXC
+TASX
+THETA
+RHUM
+RSTB
+XGLWC
+CONCN
+CONCP_LWO
+CONCD_RWO
+WSC
+WDC
+WIC
+endVariables
