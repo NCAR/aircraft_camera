@@ -6,3 +6,10 @@ To Be Done
 fltno.[FWD|DOWN|FWD_DOWN].YYYYMMDD.hhmmss_hhmmss.mp4 
 instead of fltno.mp4
 
+-Last time I ran combineCameras.pl, it died creating the last annotated image with the error:
+
+Use of uninitialized value in substr at ./combineCameras.pl line 336.
+substr outside of string at ./combineCameras.pl line 336.
+Use of uninitialized value in string ne at ./combineCameras.pl line 336.
+End of data file reached searching for c130_fwd_081111_214500.jpg at ./combineCameras.pl line 340.
+
