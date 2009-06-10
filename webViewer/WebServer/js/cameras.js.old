@@ -1,0 +1,176 @@
+			var flightNumber = 0, curImg;
+			var maxVal = -1, offsetTime = 0;
+			var crossHairs=false;
+			var scale = "1024";
+			var now = new Date();
+			var d = new Date();
+			
+			function getNames(offset){
+				d.setTime(now.valueOf() + (1000*offset) + offsetTime);
+				curImg = d.format("yymmdd-HHMMss") + ".jpg";
+				$("#imgNum").html(curImg);
+			}
+
+			function setImgs(){
+
+				for (i=1; i<=$(".camCheck").size(); i=i+1){
+					if ($("#showCam"+i).attr('checked') == 1 ){
+						$("#cam"+i).attr("src", "http://sloop2/cam/flight_number_" + flightNumber + "/" + 
+									$("#showCam"+i).attr('alt') + "/" + curImg);
+
+						if(crossHairs){$("img.grad"+i).show();}
+					}else{
+						$("#cam"+i).attr("src", "");
+						$("img.grad"+i).hide();
+					}	
+				}
+			}
+
+			function timedFunc() {
+				if ( $("#autoUpdate").attr('checked') == 1) {
+					now = new Date();
+					getNames(maxVal);
+					setImgs();				
+				}
+
+				setTimeout("timedFunc()", 1000);
+			}
+
+			function playFunc() {
+				var curVal = $("#slider").slider('option', 'value');
+				if( curVal <= maxVal ){
+					if ($("#playButton").attr("checked") == true){
+						getNames(curVal);
+						setImgs();
+						$("#slider").slider('option', 'value', curVal+5);
+						setTimeout("playFunc()", 200);
+					}
+				} else {
+					$("#playButton").attr("checked", false);
+					$("#autoUpdate").attr("checked", true);
+				}	
+			}
+
+			function autoscaler() {
+				var auto = $("#autoScale").attr('checked');
+				var aftScale = 1;
+
+				if($("#sideways").attr('checked')){
+					aftScale = $(".camCheck").size();
+				}
+
+				if (auto) {
+					if (document.documentElement.clientWidth-250 > document.documentElement.clientHeight ) {
+						scale = (document.documentElement.clientHeight / aftScale );
+					}else{
+						scale = (document.documentElement.clientWidth / aftScale) - 250 ;
+					}
+				}else{
+					scale = 1024;
+				}
+
+				$("img.cam").attr("width", scale);
+				for (i=1; i<=$(".camCheck").size(); i=i+1){
+					$("img.grad"+i+":first").attr("height", ($("#cam"+i).attr('height') * 0.9)/aftScale);
+				}
+			}
+
+			$(function(){
+				//capture status, get flight nubmer
+				$("span[id='status']").load("status.php", "first=yes", function(){
+					//check for offset between local and server clock
+					var offsetString = $("#datetime").text();
+					var servDate = new Date;
+					servDate.setTime(offsetString);
+					var locDate = new Date();
+					offsetTime = servDate.valueOf() - locDate.valueOf();
+
+					//update flight number
+					flightNumber = $("#curFlNum").text();
+					$("span[id='flightNum']").text(flightNumber);
+				});
+
+				autoscaler(); //scale images
+				timedFunc();  //start showing/refreshing images	
+
+				//set time scale for slider
+				$("#sliderMin").change(function() {
+					var newTime = (-60 * $("#sliderMin").attr('value'));
+					$("#slider").slider('option', 'min', newTime);
+				});
+
+				//autoscale
+				$(":checkbox").change(function() {
+					autoscaler();
+				});
+				$(window).resize(function() {
+					autoscaler();
+				});
+
+				//crosshairs
+				$("#xHairs").change(function() {
+					crossHairs = $("#xHairs").attr('checked');
+					if (!crossHairs) {
+						for (i=1; i<=$(".camCheck").size(); i=i+1){
+							$("img.grad"+i).hide();
+						}
+					}
+				});					
+
+				//start,stop, refresh buttons
+				$("#startRec").click(function(){
+					$("#hiddenDiv").load("capture.php", "start=yes");
+					$("#status").load("status.php", "first=yes", function() {
+						flightNumber = $("#curFlNum").text();
+						$("#output").load("output.php");
+					});
+				});
+				$("#stopRec").click(function(){
+					$("#hiddenDiv").load("capture.php", "stop=yes");
+				});
+				$("#manRefresh").click(function(){
+					now = new Date();
+					$("#slider").slider('value', maxVal);
+					getNames(maxVal);
+					setImgs();
+				});	
+
+				//live or playback control
+				$("#autoUpdate").change(function() {
+					if ($("#autoUpdate").attr("checked")) {
+						$("#playButton").attr("checked", false);
+						$("#slider").slider('value', maxVal);
+					}
+				});
+
+				$("#playButton").change(function(){
+					if ($("#playButton").attr("checked")){
+						$("#autoUpdate").attr("checked", false);
+						if ( $("#slider").slider('option', 'value') >= maxVal){
+							$("#slider").slider('option', 'value', (-60 * $("#sliderMin").attr('value')));
+						}
+						playFunc();		
+					}
+				});
+
+				//set up tabs
+				$("#tabs").tabs();		
+
+				//load camera selectors
+				$('#camSelectors').load('camSelect.php');
+
+				//set up Slider
+				$('#slider').slider({
+					min: -300,
+					max: maxVal,
+					step: 1,
+					slide: function(event, ui) {
+						getNames(ui.value);
+						$("#autoUpdate").attr("checked", false);
+					},
+					stop: function(event, ui) {
+						setImgs();
+					}
+				});
+			
+			});

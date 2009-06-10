@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+		<title>Camera Viewer</title>
+		<link type="text/css" href="css/smoothness/jquery-ui-1.7.1.custom.css" rel="stylesheet" />	
+		<link type="text/css" href="css/demo.css" rel="stylesheet" />	
+
+		<script type="text/javascript" src="js/jquery-1.3.2.min.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.7.1.custom.min.js"></script>
+		<script type="text/javascript" src="js/date.format.js"></script>
+		<script type="text/javascript" src="js/cameras.js"></script>
+
+	</head>
+
+	<body>
+
+		<div id="tabs">
+			<ul>
+			<li><a href="#tabs-1">Live Camera Images</a></li>
+			<li><a href="#tabs-2">Capture Controls</a></li>
+			</ul>
+		
+			<div id="tabs-1">
+				<form action="#"> 
+
+					<div class="right">
+						Flight Number: <span id="flightNum">unknown</span> 
+						 - <span id="status">unknown</span>
+					</div> 
+					<div class="clear"></div>
+					<div class="right2"><div class="greyBox">
+						<button id="manRefresh">Update Image(s)</button> <br /> <br /> 
+						
+						Auto Image Update: <br />
+						<input type="checkbox" id="autoUpdate" checked />Live (Current)<br /> 
+						<input type="checkbox" id="playButton" />Playback <br />
+						<br />	
+						Camera Feed(s): <br />
+						<div id="camSelectors"></div>
+						<br />	
+						Other Options: <br />
+						<input type="checkbox" id="autoScale" checked/> Fit To Browser <br />
+						<input type="checkbox" id="sideways" checked /> Horizontal <br />
+						<input type="checkbox" id="xHairs" /> Rulers <br />
+
+					</div></div>
+
+				</form> 
+
+				<div >
+					<table border="0" id="imageTable">
+					</table>
+				</div>
+
+				<div class="clear"></div>	
+	
+				<div id="slider"></div>
+
+				<form action="#">
+					<span class="left">
+						<input type="text" value="5" size="3" id="sliderMin" /> Minutes Ago 
+					</span>
+					<span class="right">
+						Current: <span id="imgNum">0</span><br />
+						<span class="loading">loading image(s)...</span>
+					</span>
+				</form>
+				<br />
+
+				<span id="test"></span>
+			</div>
+
+			<div id="tabs-2">
+				<form action="#">
+					Flight Number: <span id="flightNum">unknown</span> <br /> 
+					Camera Status: <span id="status">unknown</span> <br /> 
+					<button id="startRec">Start</button>  
+					<button id="stopRec">Stop</button>
+					<span id="output"></span> 
+				</form>
+			</div>
+
+			<div id="hiddenDiv" style="display:none;"></div> <!-- space to send output from php -->
+
+		</div>
+
+	</body>
+
+</html>
+
+

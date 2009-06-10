@@ -1,0 +1,55 @@
+body
+{
+	font: 82.5% "Trebuchet MS", sans-serif;
+	margin: 5px;
+}
+
+table
+{
+	padding: 0px;
+	margin: 0px;
+}
+
+.right 
+{
+	float: right;
+}
+
+.right2
+{
+	float: right;
+	clear: right;
+	position: relative;
+	z-index: 1;
+}
+
+.left
+{
+	float: left;
+}
+
+.clear
+{
+	clear: both;
+}
+
+.greyBox
+{
+	max-width: 175px;
+	padding: 10px 10px 10px 10px;
+	background-color:#f0f0f0;
+	border: 1px dotted #808080;
+}
+
+.loading
+{
+	display:none;
+	color: #CCCCCC;
+}
+
+.grad1
+{ display:none;}
+.grad2
+{ display:none;}
+.grad3
+{ display:none;}
