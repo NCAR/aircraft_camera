@@ -91,7 +91,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 	err=dc1394_feature_get_value(camera, DC1394_FEATURE_GAIN, &gain);
     DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Failed to read gain\n");
 	if ((100*((float)gain-minGain))/(maxGain-minGain) > (camConfig->nightThreshold)) night = 1;
-	printf ("gain: %f, threshold: %d, night: %d\n", (100*((float)gain-minGain))/(maxGain-minGain), camConfig->nightThreshold, night);
+//	printf ("gain: %f, threshold: %d, night: %d\n", (100*((float)gain-minGain))/(maxGain-minGain), camConfig->nightThreshold, night);
 
 	/* save raw binary data if requested */
 	if(camConfig->raw){
@@ -160,7 +160,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 //  		printf("wrote: %s\n", full_file_name);
 	}
 
-	/* clean up and return*/
+	/* clean up and return */
 	free(new_frame->image);
 	free(new_frame);
     dc1394_video_set_transmission(camera, DC1394_OFF);

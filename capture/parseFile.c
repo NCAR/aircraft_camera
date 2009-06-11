@@ -2,7 +2,6 @@
  * Parses a camera config file, format specified in sample config file
  */
 
-#define _GNU_SOURCE //needed to eliminate warning about asprintf
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -32,7 +31,9 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 	applyDefaults(camConf);
 
 	while(!feof(file)){
-		/* get one line (if line is longer than 200 chars, this might break) */
+		/* get one line (if line is longer than 200 chars, this might break)
+		   we want to find all of the lines between the specified GUID and 
+		   the next GUID in the file. Then we want to parse those lines */
 		fgets(line, 200, file);
 		
 		/* if line is not a comment, parse it */

@@ -1,22 +1,19 @@
-
-CSOURCE = main.c getIMG.c parseFile.c writejpeg.c writepng.c
-CPPSOURCE = xmp.cpp 
-CFLAGS = -Wall
+OBJECTS = main.o getIMG.o parseFile.o writejpeg.o writepng.o xmp.o
+FLAGS = -Wall
 LIBS = -ldc1394 -lraw1394 -ljpeg -lpng -lpq -lexiv2
 
-all: main 
+all: capture
 
-main: xmp $(CSOURCE) 
-	gcc -c main.c $(CFLAGS) 
-	gcc -c getIMG.c $(CFLAGS)
-	gcc -c parseFile.c $(CFLAGS)
-	gcc -c writejpeg.c $(CFLAGS) 
-	gcc -c writepng.c $(CFLAGS) 
-	g++ -o capture main.o getIMG.o parseFile.o writejpeg.o writepng.o xmp.o $(LIBS) 
+capture: $(OBJECTS) 
+	g++ -o capture $(OBJECTS) $(LIBS) $(FLAGS)
 
-xmp: xmp.cpp
-	g++ -c xmp.cpp 
+main.o: getIMG.h
+getIMG.o: getIMG.h writejpeg.h writepng.h
+parseFile.o: parseFile.h
+writejpeg.o: writejpeg.h
+writepng.o: writepng.h
+xmp.o: getIMG.h
 
 clean:
-	rm -f *.o capture
+	rm -f $(OBJECTS) 
 

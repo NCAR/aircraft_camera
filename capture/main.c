@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <unistd.h> 	//for sleep, fork
 #include <sys/wait.h> 	//for waitpid
-#include <signal.h> 	//for signal
+#include <signal.h> 	//for catching kill signals
 #include <string.h>
 #include <dc1394/dc1394.h>
 #include <stdlib.h>	
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 	PGconn *conn; 					//postgresql database connection
 	pid_t cpid;						//PID for timing process
 	dc1394_t * d;					//dc1394 base class (for scanning the bus)
-	dc1394camera_t * resCam;		//dc1394 camear class, used here for reset
+	dc1394camera_t * resCam;		//dc1394 camera class, used here for reset
     dc1394camera_list_t * list; 	
     dc1394error_t err;			
 	
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
 	/* fill structs with data from config file */
 	for (i=0; i<list->num; i++){
-		camArray[i] = malloc(sizeof(camConf_t)); //allocate structures
+		camArray[i] = malloc(sizeof(camConf_t)); //allocate config structures
 		if (!getConf(CONFIG_FILE, list->ids[i].guid, camArray[i])){
 			printf("Warning: no settings for camera: %llx in file: %s,using defaults.\n",
 					list->ids[i].guid, CONFIG_FILE); 
@@ -105,16 +105,17 @@ int main(int argc, char *argv[])
 	/* set up handler for SIGINT (ctrl-c) signal */
 	signal(SIGINT, &finishUp);
 
-	/* keep getting pictures (once per second) until SIGINT signal */
+	/* keep getting pictures until SIGINT signal or night detection */
 	while(keepGoing && night<10){
 
-		/* child process: wait one second, then die */
+		/* spawn child process that waits one second, then die */
 		if( !(cpid = fork()) ) {
 			sleep(1);
 			exit(0);
 		}
 
-		/* main process: get image(s) then wait for child process to die */
+		/* main process continues here, where it will
+		   get image(s) and then wait for child process to die */
 		getTime(timeStr);
 		for (i=0; i<list->num; i++){
 			sprintf(image_file_name, "%s%s/%s/%s", FILE_PREFIX, flNum, 
@@ -126,8 +127,9 @@ int main(int argc, char *argv[])
 		waitpid(cpid, NULL, 0);
 	}
 
-	/* Will get here after SIGINT signal, clean up memory and exit*/
-	if (night) printf ("night detected, shutting down\n");
+	/* Will get here after SIGINT signal, or night detection
+	   clean up memory and exit*/
+	if (night>10) printf ("night detected, shutting down\n");
 	else printf("sigINT signal captured, exiting cleanly\n");
 
 	for (i=0; i<list->num; i++)
@@ -140,11 +142,14 @@ int main(int argc, char *argv[])
 }
 
 void finishUp(){
+/* This function will be set as the SIGINT signal handler
+   It simply breaks the main loop so that we can exit cleanly */
 	keepGoing = 0;
 }
 
 void getTime(char* s){
-
+/* This function returns the a string formatted with the date and time
+   in the style YYMMDD-HHMMSS */
 	struct tm *t;
 	time_t rawtime;
 
@@ -160,6 +165,8 @@ void getTime(char* s){
 }
 
 int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
+/* This function clears the old camera table and sets up a new one */
+
 	int i;
 	char command[100];
 	PGresult *res;
@@ -195,6 +202,8 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 }
 
 int updatePostgres(PGconn *conn, const char * img_name, long long guid, int night) {
+/* This function updates the database with the newest image, etc */
+
 	char command[100];
 	PGresult *res;
 
