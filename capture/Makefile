@@ -15,5 +15,5 @@ writepng.o: writepng.h
 xmp.o: getIMG.h
 
 clean:
-	rm -f $(OBJECTS) 
+	rm -f $(OBJECTS) capture
 

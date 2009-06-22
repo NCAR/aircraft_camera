@@ -9,7 +9,7 @@ typedef struct {
 	uint32_t mode;			//Camera mode - almost always mode7
 	uint32_t coding;		//Color Coding - RAW8 or RAW16 for color cameras
 	uint32_t bayerMethod;	//Method to 'debayer' the raw image (convert from raw to RGB)
-	char direction[10]; 	//Direction the camera is pointing - for reference
+	char direction[50]; 	//Direction the camera is pointing - for reference
 	char raw;				//option for RAW binary output (not debayered)
 	char jpg;				//option for lossy JPEG compressed output
 	char png;				//option for lossless PNG compressed output
