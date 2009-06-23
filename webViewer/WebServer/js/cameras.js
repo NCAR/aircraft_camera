@@ -1,47 +1,27 @@
 //Global Vars
 var imgSrc = new Array();
-var flightNumber = 0, curImg="start";
+var flightNumber = 0;
 var maxVal = -2, offsetTime = 0, imgsReady=0;
-var crossHairs=false;
+var rulers=false, grids=false;
 var scale = "1024";
 var now = new Date();
 var d = new Date();
 
-function getNames(offset){
-//get the name of the the image offset by <offset> seconds
-	d.setTime(now.valueOf() + (1000*offset) + offsetTime);
-	newImg = d.format("yymmdd-HHMMss") + ".jpg";
-	$("#imgNum").html(newImg);
-	return newImg;
-}
-
-function getDbNames(){
-//get the name of the latest image in the DB
-//	$(".loading").show();
-	$.get("getimgs.php", "cam=1", function(data){
-		curImg = data;
-		$("#imgNum").html(data);
-//		$(".loading").hide();
-		setImgs();
-	});
-}
-
-function setImgs(){
-//append the full file path and set the 'src' tags to the new images
-	for (i=1; i<=$(".camCheck").size(); i=i+1){
-		if ($("#showCam"+i).attr('checked') == 1 ){
-			$("#cam"+i).attr("src", "flight_number_" + flightNumber + "/" + 
-						$("#showCam"+i).attr('alt') + "/" + curImg);
-
-			if(crossHairs){$("img.grad"+i).show();}
-		}else{
-			$("#cam"+i).attr("src", "");
-			$("img.grad"+i).hide();
-		}	
+function getNames(offset, pbmode){
+//get the name of the the image offset by <offset> seconds,
+// pass pbmode to setImgs if offset != 0
+	if (offset == 0) {
+		$.get("getimgs.php", "cam=1", function(data){
+			setImgs(data, false);
+		});
+	} else {
+		d.setTime(now.valueOf() + (1000*offset) + offsetTime);
+		newImg = d.format("yymmdd-HHMMss") + ".jpg";
+		setImgs(newImg, pbmode);
 	}
 }
 
-function setImgs2(x){
+function setImgs(name, pbmode){
 //start loading the images for the next playback frame
 	for (i=1; i<=$(".camCheck").size(); i=i+1){
 		if ($("#showCam"+i).attr('checked') == 1 ){
@@ -51,31 +31,62 @@ function setImgs2(x){
 			imgSrc[i] += "/";
 			imgSrc[i] += $("#showCam"+i).attr('alt');
 			imgSrc[i] += "/";
-			imgSrc[i] += getNames(x);
+			imgSrc[i] += name;
 	
-			$('<img>')
-				.load(function() {
-					imgsReady++;
-					})
-				.error(function() {
-					imgsReady++;
-					})
-				.attr('width', scale)
-				.attr('src', imgSrc[i]);
-		}
+			if (pbmode) {
+				$('<img>')
+					.load(function() {
+						imgsReady++;
+						})
+					.error(function() {
+						imgsReady++;
+						})
+					.attr('width', scale)
+					.attr('src', imgSrc[i]);
+			} else { 
+				$("#cam"+i).attr("src", imgSrc[i]);
+			}
+			if(rulers){$("img.grad"+i).show();}
+			if(grids){$("img.grid:eq("+(i-1)+")").show();}
+
+		}else{
+			$("#cam"+i).attr("src", "");
+			$("img.grad"+i).hide();
+			$("img.grid:eq("+(i-1)+")").hide();
+		}	
 	}	
 		
+	$("#imgNum").html(name);
 }
 
 function timedFunc() {
 //main loop: updates the images and then calls itself
 	if ( $("#autoUpdate").attr('checked') == 1) {
 		now = new Date();
-		getDbNames();
+		getNames(0, false);
 	}
 
 	$("span[id='status']").load("status.php");
+	if ($("#fdCheck").attr("checked") == true){
+		$("span[id='flightData']").load("flightData.php");
+	}
 	setTimeout("timedFunc()", 1000);
+}
+
+function playFunc() {
+//'Plays back' the archived images
+	var curVal = $("#slider").slider('option', 'value');
+	if( curVal <= maxVal ){
+		if ($("#playButton").attr("checked") == true){
+			imgsReady = 0;
+			getNames(curVal, true);
+			$("#slider").slider('option', 'value', curVal+5);
+			setTimeout("checkReadyImgs()", 10);
+		}
+	} else {
+		$("#playButton").attr("checked", false);
+		$("#autoUpdate").attr("checked", true);
+	}	
 }
 
 function checkReadyImgs() {
@@ -96,52 +107,44 @@ function checkReadyImgs() {
 	}
 }
 
-function playFunc() {
-//'Plays back' the archived images
-	var curVal = $("#slider").slider('option', 'value');
-	if( curVal <= maxVal ){
-		if ($("#playButton").attr("checked") == true){
-			imgsReady = 0;
-			setImgs2(curVal);
-			$("#slider").slider('option', 'value', curVal+5);
-			setTimeout("checkReadyImgs()", 10);
-		}
-	} else {
-		$("#playButton").attr("checked", false);
-		$("#autoUpdate").attr("checked", true);
-	}	
-}
-
 function autoscaler() {
 //Determines and sets the new image scaling
 	var auto = $("#autoScale").attr('checked');
 	var sideways = $("#sideways").attr('checked');
 	var ccams = $(".camCheck:checked").size();
+    var menWidth = document.getElementById('flightData').offsetWidth;
+	var menuWidth = menWidth == 0 ? 250 : menWidth;
+	menuWidth += 130;
+
 	if (auto) {
 
 		if(sideways){
-			if ((document.documentElement.clientWidth - 250) < (document.documentElement.clientHeight * ccams )) {
-				scale = (document.documentElement.clientWidth / ccams ) - (250/ccams);
+			if ((document.documentElement.clientWidth - menuWidth) < (document.documentElement.clientHeight * ccams )) {
+				scale = (document.documentElement.clientWidth / ccams ) - (menuWidth/ccams);
 			} else {
 				scale = (document.documentElement.clientHeight );
 			}
 		} else {
-			if (((document.documentElement.clientWidth - 250) * ccams) < (document.documentElement.clientHeight)) {
-				scale = (document.documentElement.clientWidth ) - 250;
+			if (((document.documentElement.clientWidth - menuWidth) * ccams) < (document.documentElement.clientHeight)) {
+				scale = (document.documentElement.clientWidth ) - menuWidth;
 			} else {
 				scale = (document.documentElement.clientHeight / ccams );
 			}
 		}
 		$("img.cam").attr("width", scale);
+		$("img.grid").attr("width", scale);
 
 	} else {
 		$("img.cam").removeAttr("width");
+		for (i=1; i<=$(".camCheck").size(); i=i+1){
+			$("img.grid:eq("+(i-1)+")").attr("width", ($("#cam"+i).attr('width') ));	
+		}
 	}
 
 	for (i=1; i<=$(".camCheck").size(); i=i+1){
 		$("img.grad"+i+":first").attr("height", ($("#cam"+i).attr('height') ));
 	}
-	setImgs();
+	getNames($("#slider").slider('value'),false);
 }
 
 function buildImageTable(sideways) {
@@ -152,7 +155,7 @@ function buildImageTable(sideways) {
 		for (i=1; i<=$(".camCheck").size(); i=i+1){
 			table_contents = table_contents 
 				+ '<td><img src="vgrad.png" class="grad' + i
-				+ '" width="10"/></td><td><img id="cam' + i
+				+ '" width="10"/></td><td><img class="grid" src="grid.png" style="display:none;" /><img id="cam' + i
 				+ '" class="cam" src="nothere.jpg" /></td> \n';
 		}
 		table_contents = table_contents + '</tr><tr>';
@@ -167,7 +170,7 @@ function buildImageTable(sideways) {
 		for (i=1; i<=$(".camCheck").size(); i=i+1){
 			table_contents = table_contents
 				+ '<tr> <td><img src="vgrad.png" class="grad' + i
-				+ '" width="10"/></td><td><img id="cam' + i
+				+ '" width="10"/></td><td><img class="grid" src="grid.png" style="display:none;" /><img id="cam' + i
 				+ '" class="cam" src="nothere.jpg" /></td></tr><tr><td></td><td><img src="grad.png" class="grad' + i
 				+ '" height="10" width="100%" /></td></tr> \n';
 		} 
@@ -177,7 +180,12 @@ function buildImageTable(sideways) {
 }
 
 $(function(){
-//This function runs when the page is loaded
+/* ************************************************
+ * JQuery page load function,  This function runs 
+ * when the page is loaded.
+ * Need to put all JQuery setup and event handlers
+ * inside this function
+ **************************************************/
 
 	/*=========    SET UP HTML   ============*/
 	
@@ -216,11 +224,16 @@ $(function(){
 		max: maxVal,
 		step: 1,
 		slide: function(event, ui) {
-			curImg = getNames(ui.value);
 			$("#autoUpdate").attr("checked", false);
+			var mins=Math.floor(-ui.value/60);
+			if (mins) {
+				$("#imgNum").html(mins + " Minutes " + (-ui.value%60) + " Seconds Ago");
+			} else {
+				$("#imgNum").html((-ui.value%60) + " Seconds Ago");
+			}
 		},
 		stop: function(event, ui) {
-			setImgs();
+			getNames(ui.value, false)
 		}
 	});
 
@@ -228,17 +241,36 @@ $(function(){
 	/*=========    SET UP EVENT HANDLERS    ============*/
 
 	//autoscale events
-	$(":checkbox").change(function() {
+	$(":checkbox:not('#fdCheck')").change(function() {
 		autoscaler();
 	});
 	$(window).resize(function() {
 		autoscaler();
 	});
 
-	//crosshairs event
-	$("#xHairs").change(function() {
-		crossHairs = $("#xHairs").attr('checked');
-		if (!crossHairs) {
+	//live flight data
+	$("#fdCheck").change(function() {
+		if ($("#fdCheck").attr('checked')) {
+			$("#fdDiv").show();
+		} else {
+			$("#fdDiv").hide();
+		}
+	});
+
+	//grid event
+	$("#grids").change(function() {
+		grids = $("#grids").attr('checked');
+		if (!grids) {
+			for (i=1; i<=$(".camCheck").size(); i=i+1){
+				$("img.grid:eq("+(i-1)+")").hide();
+			}
+		}
+	});					
+
+	//rulers event
+	$("#rulers").change(function() {
+		rulers = $("#rulers").attr('checked');
+		if (!rulers) {
 			for (i=1; i<=$(".camCheck").size(); i=i+1){
 				$("img.grad"+i).hide();
 			}
@@ -264,7 +296,7 @@ $(function(){
 	$("#manRefresh").click(function(){
 		now = new Date();
 		$("#slider").slider('value', maxVal);
-		getDbNames();
+		getNames(0, false);
 	});	
 
 	//live or playback control

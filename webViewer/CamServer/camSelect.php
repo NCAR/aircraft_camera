@@ -1,22 +1,18 @@
-
 <?php
-
 //	ini_set('display_errors','1');
-	putenv('PGHOST=lenado.eol.ucar.edu');
-	putenv('PGDATABASE=real-time');
-	putenv('PGUSER=ads');
 
-    $numCams = shell_exec(' psql -t -c "SELECT COUNT(*) FROM camera;" ');
-	echo '<span id="numCams" style="display:none;">'.$numCams.'</span>';
-	
-	for ($counter = 0; $counter < $numCams; $counter += 1) {
-	    $output = shell_exec(' psql -A -t -c "SELECT direction FROM camera ORDER BY direction LIMIT 1 OFFSET ' . $counter . ';" ');
-		echo '<input type="checkbox" id="showCam'.($counter+1).'" class="camCheck" alt="'.$output."\"";
-		if ($counter == 1) {
-			echo " checked";
-		}
-		echo ' onChange="autoscaler();"/>'.$output.' <br /> ';
+	$dbconn = pg_connect("host=lenado.eol.ucar.edu dbname=real-time user=ads")
+		or die('Could not connect: '.pg_last_error());
+
+	$query = "SELECT direction FROM camera ORDER BY direction";
+	$result = pg_query($query) or die('Query Failed: '. pg_last_error());
+	$count = 1;
+	while ($line = pg_fetch_array($result, NULL, PGSQL_ASSOC)) {
+		echo '<input type="checkbox" id="showCam' . $count . '" class="camCheck" alt="' . $line['direction'] . '"' ;
+		if ($count == 2) echo " checked";
+		echo ' onChange="autoscaler();" />' . $line['direction'] . " <br />\n";
+		$count += 1;
 	}
- 
+
 ?>
 

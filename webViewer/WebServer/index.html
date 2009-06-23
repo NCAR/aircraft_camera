@@ -30,21 +30,29 @@
 					</div> 
 					<div class="clear"></div>
 					<div class="right2"><div class="greyBox">
-						<button id="manRefresh">Update Image(s)</button> <br /> <br /> 
+						<strong> Image Source: </strong><br />
+						<!--<button id="manRefresh">Update Image(s)</button> <br /> <br /> -->
 						
-						Auto Image Update: <br />
 						<input type="checkbox" id="autoUpdate" checked />Live (Current)<br /> 
 						<input type="checkbox" id="playButton" />Playback <br />
 						<br />	
-						Camera Feed(s): <br />
+						<strong> Camera Feed(s): </strong><br />
 						<div id="camSelectors"></div>
 						<br />	
-						Other Options: <br />
+						<strong> Other Options: </strong><br />
 						<input type="checkbox" id="autoScale" checked/> Fit To Browser <br />
 						<input type="checkbox" id="sideways" checked /> Horizontal <br />
-						<input type="checkbox" id="xHairs" /> Rulers <br />
+						<input type="checkbox" id="rulers" /> Rulers <br />
+						<input type="checkbox" id="grids" /> Grid <br />
+						<input type="checkbox" id="fdCheck" /> Flight Data <br />
 
-					</div></div>
+						</div>
+						<div class="clear"><br /></div>	
+						<div class="greyBox" style="display:none;" id="fdDiv" >
+						<strong> Current Flight Data: </strong><br />
+						<span id="flightData"> </span> 
+						</div> 
+					</div>
 
 				</form> 
 
@@ -63,7 +71,7 @@
 					</span>
 					<span class="right">
 						Current: <span id="imgNum">0</span><br />
-						<span class="loading">loading image(s)...</span>
+						<span class="loading">loading image...</span>
 					</span>
 				</form>
 				<br />
@@ -79,7 +87,7 @@
 					<button id="stopRec">Stop</button>
 					<span id="output"></span> 
 				</form>
-			</div>
+			</div> 
 
 			<div id="hiddenDiv" style="display:none;"></div> <!-- space to send output from php -->
 

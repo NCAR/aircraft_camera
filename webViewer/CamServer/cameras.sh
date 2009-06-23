@@ -2,14 +2,12 @@
 
 
 start() {
-	#get flight number
-	export PGHOST=lenado.eol.ucar.edu
-	export PGDATABASE=real-time
-	export PGUSER=ads
-	num=`psql -A -t -c "SELECT value FROM global_attributes WHERE key='FlightNumber'"`;
+	HOST=lenado.eol.ucar.edu
+	LOC='/scr/rafcam/flight_number_'
+	CONF='cameras.conf'
 
 	#start capture program
-	(./capture $num ) &
+	(./capture -c $CONF -f $LOC -d $PGHOST ) &
 
 	#store pid for stop script
 	cap_pid=$!

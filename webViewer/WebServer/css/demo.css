@@ -1,6 +1,6 @@
 body
 {
-	font: 82.5% "Trebuchet MS", sans-serif;
+	font: 85% "Trebuchet MS", sans-serif;
 	margin: 5px;
 }
 
@@ -8,6 +8,11 @@ table
 {
 	padding: 0px;
 	margin: 0px;
+}
+
+.grid
+{
+	position: absolute;
 }
 
 .right 
@@ -19,8 +24,8 @@ table
 {
 	float: right;
 	clear: right;
-	position: relative;
-	z-index: 1;
+	position: relative; 
+	z-index: 1; 
 }
 
 .left
@@ -45,6 +50,18 @@ table
 {
 	display:none;
 	color: #CCCCCC;
+}
+
+.fdName
+{
+	font: 75% "Trebuchet MS", sans-serif;
+	padding-bottom: 15px;
+}
+
+.units
+{
+	font: 65% "Trebuchet MS", sans-serif;
+	padding: 2px;
 }
 
 .grad1
