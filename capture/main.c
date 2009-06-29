@@ -16,14 +16,16 @@
 #include <inttypes.h>
 #include "getIMG.h"
 
+/* default settings - if not specified by user */
 #define CONFIG_FILE "cameras.conf"
 #define FILE_PREFIX "/scr/rafcam/flight_number_"
-#define DB_HOST "lenado.eol.ucar.edu"
+#define DB_HOST "acserver"
 
 void finishUp();
+void cleanUpDB(PGconn *, int);
 void getTime(char*);
 int initPostgres(PGconn *, camConf_t **, int);
-int updatePostgres(PGconn *, const char *, long long, int); 
+int updatePostgres(PGconn *, const char *, int); 
 int getDbFlNum(PGconn *conn, char **flNum);
 void parseInputLine(int, char **, char**, char**, char**, char**, int*);
 char *defaults(char **arg, char *value);
@@ -35,7 +37,6 @@ int keepGoing = 1;
 
 int main(int argc, char *argv[])
 {
-
 	/* declare vars */
     int i, useDB = 1, getFNfromDB = 0, night=0;
     char image_file_name[100], directory[100], timeStr[20], dbConnectString[100];
@@ -140,7 +141,7 @@ int main(int argc, char *argv[])
 			sprintf(image_file_name, "%s%s/%s/%s", prefix, flNum, 
 					camArray[i]->direction, timeStr); 
 			night += getIMG(image_file_name, camArray[i], d);
-			if(useDB) updatePostgres(conn, timeStr, camArray[i]->guid, night);
+			if(useDB) updatePostgres(conn, timeStr, i);
 		}
 //		printf("night: %d\n",  night);
 		waitpid(cpid, NULL, 0);
@@ -155,7 +156,7 @@ int main(int argc, char *argv[])
 		free(camArray[i]);
 	free(camArray);
 	dc1394_camera_free_list (list);
-	if(useDB) PQfinish(conn);
+	if(useDB) cleanUpDB(conn, night);
 
     return 0;
 }
@@ -164,6 +165,28 @@ void finishUp(){
 /* This function will be set as the SIGINT signal handler
    It simply breaks the main loop so that we can exit cleanly */
 	keepGoing = 0;
+}
+
+void cleanUpDB(PGconn *conn, int night){
+
+	PGresult *res;
+
+	res = PQexec(conn, "UPDATE camera SET status=0, message='Recording Stopped'");
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "update table failed: %s", PQerrorMessage(conn));
+	} //else printf("table updated\n"); 
+
+	if (night >= 10) {
+		res = PQexec(conn,
+		"UPDATE camera SET status = 0, message = 'Night Detected, Not Recording'");
+		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+    	    fprintf(stderr, "update table failed: %s", PQerrorMessage(conn));
+        	PQclear(res);
+		}
+	}
+
+	PQclear(res);
+	PQfinish(conn);
 }
 
 void getTime(char* s){
@@ -187,8 +210,12 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 /* This function clears the old camera table and sets up a new one */
 
 	int i;
-	char command[100];
+	char command[500]; 
+	char hostname[100];
 	PGresult *res;
+	
+	/* get the local host name */
+	gethostname(hostname, 100);
 
 	/* drop existing camera table */
 	res = PQexec(conn, "DROP TABLE camera");
@@ -199,35 +226,45 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 
 	/* create new camera table */
 	res = PQexec(conn,
-		 "CREATE TABLE camera ( guid text, direction text, latest text, night text)");
+	"CREATE TABLE camera ( cam_host text, status integer, message text, guid text[], direction text[], latest text[])");
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "create table failed: %s", PQerrorMessage(conn));
         PQclear(res);
 	} else printf("new table created\n");
 
-	/* fill in rows */
+	/* create single row, cameras will be added as array elements */
+	sprintf(command, 
+		"INSERT INTO camera VALUES ('%s', 1, 'Recording Images', '{0}', '{0}', '{0}')",
+		hostname);
+	res = PQexec(conn, command);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "create row failed: %s", PQerrorMessage(conn));
+        PQclear(res);
+	} else printf("new row added\n");
+
+	/* fill in array with camera data */
 	for (i=0; i<numCams; i++) {
-		sprintf(command, "INSERT INTO camera VALUES ('%llx', '%s', '0', '0')", 
-				camArray[i]->guid, camArray[i]->direction);
+		sprintf(command, "UPDATE camera SET guid[%d]='%llx', direction[%d]='%s'"
+			, i, camArray[i]->guid, i, camArray[i]->direction);
 		res = PQexec(conn, command);
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
     	    fprintf(stderr, "add row failed: %s", PQerrorMessage(conn));
         	PQclear(res);
-		} else printf("new row added\n");
+		} else printf("added camera: %llx to db\n", camArray[i]->guid);
 	}
 
     PQclear(res);
 	return 1;
 }
 
-int updatePostgres(PGconn *conn, const char * img_name, long long guid, int night) {
+int updatePostgres(PGconn *conn, const char * img_name, int camNum) {
 /* This function updates the database with the newest image, etc */
 
 	char command[100];
 	PGresult *res;
 
-	sprintf(command, "UPDATE camera SET latest ='%s.jpg', night='%d' WHERE guid = '%llx'",
-			 img_name, night, guid);
+	sprintf(command, "UPDATE camera SET latest[%d] ='%s'",
+			 camNum, img_name);
 	res = PQexec(conn, command);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "update table failed: %s", PQerrorMessage(conn));
@@ -237,6 +274,7 @@ int updatePostgres(PGconn *conn, const char * img_name, long long guid, int nigh
     PQclear(res);
 	return 1;
 }
+
 int getDbFlNum(PGconn *conn, char **flNum) {
 	PGresult *res;
 	res = PQexec(conn, "SELECT value FROM global_attributes WHERE key='FlightNumber'");
@@ -325,3 +363,4 @@ char *trimWhiteSpace(char *input) {
 	}
 	return input;
 }
+

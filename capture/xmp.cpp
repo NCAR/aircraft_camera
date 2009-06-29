@@ -13,12 +13,14 @@ extern "C" int addXMP(const char *fileName, camConf_t *camConf, dc1394camera_t *
 /* Writes out all the relivant data to XMP image metadata */
 try {
     std::string file(fileName);
+	char guid_s[17];
+	sprintf(guid_s, "%llx", camConf->guid);
 
 	/* Easy method - fill in XMP structure */
     Exiv2::XmpData xmpData;
     xmpData["Xmp.dc.make"] = camera->vendor; 
 	xmpData["Xmp.dc.model"] = camera->model;   
-	xmpData["Xmp.dc.guid"]  = camConf->guid;   
+	xmpData["Xmp.dc.guid"]  = guid_s;   
 	xmpData["Xmp.dc.direction"]  = camConf->direction; 
 	xmpData["Xmp.dc.dc1394_mode"]  = camConf->mode;   
 	xmpData["Xmp.dc.flight_number"]  = camConf->flNum;

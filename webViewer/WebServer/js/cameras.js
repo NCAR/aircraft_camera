@@ -1,3 +1,6 @@
+var capturePHP="/camera/capture.php"; //path from webroot to capture.php (update this manuall if it changes)
+var camServer="http://sloop2.eol.ucar.edu"; //camserver (gets updated from db automatically)
+
 //Global Vars
 var imgSrc = new Array();
 var flightNumber = 0;
@@ -11,8 +14,8 @@ function getNames(offset, pbmode){
 //get the name of the the image offset by <offset> seconds,
 // pass pbmode to setImgs if offset != 0
 	if (offset == 0) {
-		$.get("getimgs.php", "cam=1", function(data){
-			setImgs(data, false);
+		$.getJSON("getimgs.php", function(data){
+			setImgs(data.jsonImgs[$(".camCheck").size()-1], false);
 		});
 	} else {
 		d.setTime(now.valueOf() + (1000*offset) + offsetTime);
@@ -25,7 +28,6 @@ function setImgs(name, pbmode){
 //start loading the images for the next playback frame
 	for (i=1; i<=$(".camCheck").size(); i=i+1){
 		if ($("#showCam"+i).attr('checked') == 1 ){
-			
 			imgSrc[i]  = "flight_number_";
 		 	imgSrc[i] += flightNumber;
 			imgSrc[i] += "/";
@@ -113,8 +115,8 @@ function autoscaler() {
 	var sideways = $("#sideways").attr('checked');
 	var ccams = $(".camCheck:checked").size();
     var menWidth = document.getElementById('flightData').offsetWidth;
-	var menuWidth = menWidth == 0 ? 250 : menWidth;
-	menuWidth += 130;
+	var menuWidth = menWidth == 0 ? 175 : menWidth;
+	menuWidth += 100;
 
 	if (auto) {
 
@@ -144,7 +146,9 @@ function autoscaler() {
 	for (i=1; i<=$(".camCheck").size(); i=i+1){
 		$("img.grad"+i+":first").attr("height", ($("#cam"+i).attr('height') ));
 	}
-	getNames($("#slider").slider('value'),false);
+	if ($("#autoUpdate").attr('checked') == false) {
+		getNames($("#slider").slider('value'),false);
+	}
 }
 
 function buildImageTable(sideways) {
@@ -190,17 +194,22 @@ $(function(){
 	/*=========    SET UP HTML   ============*/
 	
 	//capture status, get flight nubmer
-	$("span[id='status']").load("status.php", "first=yes", function(){
+	$("span[id='status']").load("status.php");
+
+	$.getJSON("getData.php", function(data){
 		//check for offset between local and server clock
-		var offsetString = $("#datetime").text();
+		var offsetString = data.datetime;
 		var servDate = new Date;
 		servDate.setTime(offsetString);
 		var locDate = new Date();
 		offsetTime = servDate.valueOf() - locDate.valueOf();
 
 		//update flight number from DB
-		flightNumber = $("#curFlNum").text();
+		flightNumber = data.curFlNum;
 		$("span[id='flightNum']").text(flightNumber);
+
+		//get hostname of the camserver that last updated the database	
+		camServer = 'http://' + data.chost;
 	});
 
 	//load camera selector checkboxes (get names from DB)
@@ -284,20 +293,11 @@ $(function(){
 	
 	//start,stop, refresh buttons
 	$("#startRec").click(function(){
-		$("#hiddenDiv").load("capture.php", "start=yes");
-		$("#status").load("status.php", "first=yes", function() {
-			flightNumber = $("#curFlNum").text();
-			//$("#output").load("output.php");
-		});
+		$.ajax({type: "GET", url: camServer+capturePHP+"?start=1", dataType: "jsonp"});
 	});
 	$("#stopRec").click(function(){
-		$("#hiddenDiv").load("capture.php", "stop=yes");
+		$.ajax({type: "GET", url: camServer+capturePHP+"?stop=1", dataType: "jsonp"});
 	});
-	$("#manRefresh").click(function(){
-		now = new Date();
-		$("#slider").slider('value', maxVal);
-		getNames(0, false);
-	});	
 
 	//live or playback control
 	$("#autoUpdate").change(function() {
