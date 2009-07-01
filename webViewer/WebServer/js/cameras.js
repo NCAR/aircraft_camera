@@ -5,7 +5,7 @@ var camServer="http://sloop2.eol.ucar.edu"; //camserver (gets updated from db au
 var imgSrc = new Array();
 var flightNumber = 0;
 var maxVal = -2, offsetTime = 0, imgsReady=0;
-var rulers=false, grids=false;
+var grids=false;
 var scale = "1024";
 var now = new Date();
 var d = new Date();
@@ -46,14 +46,12 @@ function setImgs(name, pbmode){
 					.attr('width', scale)
 					.attr('src', imgSrc[i]);
 			} else { 
-				$("#cam"+i).attr("src", imgSrc[i]);
+				$("#cam"+i).attr("src", imgSrc[i]).show();
 			}
-			if(rulers){$("img.grad"+i).show();}
 			if(grids){$("img.grid:eq("+(i-1)+")").show();}
 
 		}else{
-			$("#cam"+i).attr("src", "");
-			$("img.grad"+i).hide();
+			$("#cam"+i).attr("src", "").hide();
 			$("img.grid:eq("+(i-1)+")").hide();
 		}	
 	}	
@@ -68,7 +66,7 @@ function timedFunc() {
 		getNames(0, false);
 	}
 
-	$("span[id='status']").load("status.php");
+	$(".status").load("status.php");
 	if ($("#fdCheck").attr("checked") == true){
 		$("span[id='flightData']").load("flightData.php");
 	}
@@ -96,13 +94,13 @@ function checkReadyImgs() {
 //if so, set image 'src', and start next frame (playFunc())
 	var numChecked = $(".camCheck:checked").size();
 	if (imgsReady < numChecked){
-		$(".loading").show();
+//		$(".loading").show();
 		setTimeout("checkReadyImgs()", 10);
 	} else {	
-		$(".loading").hide();
+//		$(".loading").hide();
 		for (i=1; i<=$(".camCheck").size(); i=i+1){
 			if ($("#showCam"+i).attr('checked') == 1 ){
-				$("#cam"+i).attr('src', imgSrc[i]);
+				$("#cam"+i).attr('src', imgSrc[i]).show();
 			}
 		}
 		playFunc();
@@ -114,9 +112,7 @@ function autoscaler() {
 	var auto = $("#autoScale").attr('checked');
 	var sideways = $("#sideways").attr('checked');
 	var ccams = $(".camCheck:checked").size();
-    var menWidth = document.getElementById('flightData').offsetWidth;
-	var menuWidth = menWidth == 0 ? 175 : menWidth;
-	menuWidth += 100;
+	var menuWidth = 275;
 
 	if (auto) {
 
@@ -143,9 +139,6 @@ function autoscaler() {
 		}
 	}
 
-	for (i=1; i<=$(".camCheck").size(); i=i+1){
-		$("img.grad"+i+":first").attr("height", ($("#cam"+i).attr('height') ));
-	}
 	if ($("#autoUpdate").attr('checked') == false) {
 		getNames($("#slider").slider('value'),false);
 	}
@@ -153,34 +146,43 @@ function autoscaler() {
 
 function buildImageTable(sideways) {
 //sets up the HTML table that holds the images
-	var table_contents=" ";
+	var table_contents="";
 	if(sideways){
 		table_contents = "<tr>";
 		for (i=1; i<=$(".camCheck").size(); i=i+1){
 			table_contents = table_contents 
-				+ '<td><img src="vgrad.png" class="grad' + i
-				+ '" width="10"/></td><td><img class="grid" src="grid.png" style="display:none;" /><img id="cam' + i
+				+ '<td><img class="grid" src="grid.png" style="display:none;" /><img id="cam' + i
 				+ '" class="cam" src="nothere.jpg" /></td> \n';
-		}
-		table_contents = table_contents + '</tr><tr>';
-		for (i=1; i<=$(".camCheck").size(); i=i+1){
-			table_contents = table_contents 
-				+ '<td></td><td><img src="grad.png" class="grad' + i
-				+ '" height="10" width="100%" /></td> \n';
 		}
 		table_contents = table_contents + '</tr>';
 
 	} else {
 		for (i=1; i<=$(".camCheck").size(); i=i+1){
 			table_contents = table_contents
-				+ '<tr> <td><img src="vgrad.png" class="grad' + i
-				+ '" width="10"/></td><td><img class="grid" src="grid.png" style="display:none;" /><img id="cam' + i
-				+ '" class="cam" src="nothere.jpg" /></td></tr><tr><td></td><td><img src="grad.png" class="grad' + i
-				+ '" height="10" width="100%" /></td></tr> \n';
+				+ '<tr><td><img class="grid" src="grid.png" style="display:none;" /><img id="cam' + i
+				+ '" class="cam" src="nothere.jpg" width="200" /></td></tr> \n';
 		} 
 	}
 	$("#imageTable").html(table_contents);
 	autoscaler(); //scale images
+}
+
+function setupGlobals(){
+	//get data from server needed for setting up the page
+	$.getJSON("getData.php", function(data){
+		//check for offset between local and server clock
+		var servDate = new Date;
+		servDate.setTime(data.datetime);
+		var locDate = new Date();
+		offsetTime = servDate.valueOf() - locDate.valueOf();
+
+		//update flight number from DB
+		flightNumber = data.curFlNum;
+		$(".flightNum").text(flightNumber);
+
+		//get hostname of the camserver that last updated the database	
+		camServer = 'http://' + data.chost;
+	});
 }
 
 $(function(){
@@ -193,24 +195,11 @@ $(function(){
 
 	/*=========    SET UP HTML   ============*/
 	
+	//get status info
+	$(".status").load("status.php");
+
 	//capture status, get flight nubmer
-	$("span[id='status']").load("status.php");
-
-	$.getJSON("getData.php", function(data){
-		//check for offset between local and server clock
-		var offsetString = data.datetime;
-		var servDate = new Date;
-		servDate.setTime(offsetString);
-		var locDate = new Date();
-		offsetTime = servDate.valueOf() - locDate.valueOf();
-
-		//update flight number from DB
-		flightNumber = data.curFlNum;
-		$("span[id='flightNum']").text(flightNumber);
-
-		//get hostname of the camserver that last updated the database	
-		camServer = 'http://' + data.chost;
-	});
+	setupGlobals();
 
 	//load camera selector checkboxes (get names from DB)
 	$('#camSelectors').load('camSelect.php', function(){
@@ -250,15 +239,11 @@ $(function(){
 	/*=========    SET UP EVENT HANDLERS    ============*/
 
 	//autoscale events
-	$(":checkbox:not('#fdCheck')").change(function() {
-		autoscaler();
-	});
-	$(window).resize(function() {
-		autoscaler();
-	});
+	$("#autoScale").click(function() { autoscaler(); });
+	$(window).resize(function() { autoscaler(); });
 
 	//live flight data
-	$("#fdCheck").change(function() {
+	$("#fdCheck").click(function() {
 		if ($("#fdCheck").attr('checked')) {
 			$("#fdDiv").show();
 		} else {
@@ -267,47 +252,39 @@ $(function(){
 	});
 
 	//grid event
-	$("#grids").change(function() {
+	$("#grids").click(function() {
 		grids = $("#grids").attr('checked');
 		if (!grids) {
 			for (i=1; i<=$(".camCheck").size(); i=i+1){
 				$("img.grid:eq("+(i-1)+")").hide();
 			}
-		}
-	});					
-
-	//rulers event
-	$("#rulers").change(function() {
-		rulers = $("#rulers").attr('checked');
-		if (!rulers) {
-			for (i=1; i<=$(".camCheck").size(); i=i+1){
-				$("img.grad"+i).hide();
-			}
-		}
+		} else { autoscaler(); }
+		
 	});					
 
 	//request horizonal image layout
-	$("#sideways").change(function() {
+	$("#sideways").click(function() {
 		buildImageTable($("#sideways").attr('checked'));	
 	});
 	
 	//start,stop, refresh buttons
 	$("#startRec").click(function(){
 		$.ajax({type: "GET", url: camServer+capturePHP+"?start=1", dataType: "jsonp"});
+		setupGlobals();
 	});
 	$("#stopRec").click(function(){
 		$.ajax({type: "GET", url: camServer+capturePHP+"?stop=1", dataType: "jsonp"});
 	});
 
 	//live or playback control
-	$("#autoUpdate").change(function() {
+	$("#autoUpdate").click(function() {
 		if ($("#autoUpdate").attr("checked")) {
 			$("#playButton").attr("checked", false);
 			$("#slider").slider('value', maxVal);
 		}
 	});
 
-	$("#playButton").change(function(){
+	$("#playButton").click(function(){
 		if ($("#playButton").attr("checked")){
 			$("#autoUpdate").attr("checked", false);
 			if ( $("#slider").slider('option', 'value') >= maxVal){

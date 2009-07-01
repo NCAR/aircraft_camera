@@ -156,7 +156,10 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 		write_PNG_file(full_file_name, new_frame->data_depth, new_frame->size[1], 
 					new_frame->size[0], new_frame->image);
 
-		addXMP(full_file_name, camConfig, camera); 
+/*the line below is commented out because it does not work with the verison of 
+libexiv2 in that is available in the epel repos at this time - it does work with
+the latest (svn) verison of libexiv2 */
+//		addXMP(full_file_name, camConfig, camera); 
 //  		printf("wrote: %s\n", full_file_name);
 	}
 

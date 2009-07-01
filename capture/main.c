@@ -17,7 +17,7 @@
 #include "getIMG.h"
 
 /* default settings - if not specified by user */
-#define CONFIG_FILE "cameras.conf"
+#define CONFIG_FILE "/etc/capture.conf"
 #define FILE_PREFIX "/scr/rafcam/flight_number_"
 #define DB_HOST "acserver"
 
@@ -245,7 +245,7 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 	/* fill in array with camera data */
 	for (i=0; i<numCams; i++) {
 		sprintf(command, "UPDATE camera SET guid[%d]='%llx', direction[%d]='%s'"
-			, i, camArray[i]->guid, i, camArray[i]->direction);
+			, i+1, camArray[i]->guid, i+1, camArray[i]->direction);
 		res = PQexec(conn, command);
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
     	    fprintf(stderr, "add row failed: %s", PQerrorMessage(conn));
@@ -264,7 +264,7 @@ int updatePostgres(PGconn *conn, const char * img_name, int camNum) {
 	PGresult *res;
 
 	sprintf(command, "UPDATE camera SET latest[%d] ='%s'",
-			 camNum, img_name);
+			 camNum+1, img_name);
 	res = PQexec(conn, command);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "update table failed: %s", PQerrorMessage(conn));

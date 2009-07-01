@@ -26,8 +26,8 @@
 				<form action="#"> 
 
 					<div class="right">
-						Flight Number: <span id="flightNum">unknown</span> 
-						 - <span id="status">unknown</span>
+						Flight Number: <span class="flightNum">unknown</span> 
+						 - <span class="status">unknown</span>
 					</div> 
 					<div class="clear"></div>
 					<div class="right2"><div class="greyBox">
@@ -43,14 +43,14 @@
 						<strong> Other Options: </strong><br />
 						<input type="checkbox" id="autoScale" checked/> Fit To Browser <br />
 						<input type="checkbox" id="sideways" checked /> Horizontal <br />
-						<input type="checkbox" id="rulers" /> Rulers <br />
+						<!--<input type="checkbox" id="rulers" /> Rulers <br />-->
 						<input type="checkbox" id="grids" /> Grid <br />
 						<input type="checkbox" id="fdCheck" /> Flight Data <br />
 
 						</div>
 						<div class="clear"><br /></div>	
 						<div class="greyBox" style="display:none;" id="fdDiv" >
-						<strong> Current Flight Data: </strong><br />
+						<strong> Flight Data: </strong><br />
 						<span id="flightData"> </span> 
 						</div> 
 					</div>
@@ -58,7 +58,7 @@
 				</form> 
 
 				<div >
-					<table border="0" id="imageTable">
+					<table  id="imageTable">
 					</table>
 				</div>
 
@@ -82,15 +82,13 @@
 
 			<div id="tabs-2">
 				<form action="#">
-					Flight Number: <span id="flightNum">unknown</span> <br /> 
-					Camera Status: <span id="status">unknown</span> <br /> 
+					Flight Number: <span class="flightNum">unknown</span> <br /> 
+					Camera Status: <span class="status">unknown</span> <br /> 
 					<button id="startRec">Start</button>  
 					<button id="stopRec">Stop</button>
 					<span id="output"></span> 
 				</form>
 			</div> 
-
-			<div id="hiddenDiv" style="display:none;"></div> <!-- space to send output from php -->
 
 		</div>
 

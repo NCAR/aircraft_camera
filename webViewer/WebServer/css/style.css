@@ -40,10 +40,15 @@ table
 
 .greyBox
 {
-	max-width: 175px;
+	max-width: 145px;
 	padding: 10px 10px 10px 10px;
 	background-color:#f0f0f0;
 	border: 1px dotted #808080;
+}
+
+.greyBox p 
+{
+	margin: 3px 0px 0px 0px;
 }
 
 .loading
@@ -55,13 +60,11 @@ table
 .fdName
 {
 	font: 75% "Trebuchet MS", sans-serif;
-	padding-bottom: 15px;
 }
 
 .units
 {
 	font: 65% "Trebuchet MS", sans-serif;
-	padding: 2px;
 }
 
 .grad1
