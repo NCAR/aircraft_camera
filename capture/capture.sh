@@ -53,8 +53,8 @@ restart() {
 }
 
 status(){
-	STATUS=`psql -U ads -h lenado.eol.ucar.edu -d real-time -t -c "Select status from camera;"`
-	MESSAGE=`psql -U ads -h lenado.eol.ucar.edu -d real-time -t -c "Select message from camera;"`
+	STATUS=`psql -U ads -h $dbHOST -d real-time -t -c "Select status from camera;"`
+	MESSAGE=`psql -U ads -h $dbHOST -d real-time -t -c "Select message from camera;"`
 	
 	if [ -s "$pidfile" ]
 	then

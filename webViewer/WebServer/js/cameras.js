@@ -4,7 +4,7 @@ var camServer="http://sloop2.eol.ucar.edu"; //camserver (gets updated from db au
 //Global Vars
 var imgSrc = new Array();
 var flightNumber = 0;
-var maxVal = -2, offsetTime = 0, imgsReady=0;
+var maxVal = -2, imgsReady=0;
 var grids=false;
 var scale = "1024";
 var now = new Date();
@@ -18,7 +18,7 @@ function getNames(offset, pbmode){
 			setImgs(data.jsonImgs[$(".camCheck").size()-1], false);
 		});
 	} else {
-		d.setTime(now.valueOf() + (1000*offset) + offsetTime);
+		d.setTime(now.valueOf() + (1000*offset) );
 		newImg = d.format("yymmdd-HHMMss") + ".jpg";
 		setImgs(newImg, pbmode);
 	}
@@ -28,7 +28,9 @@ function setImgs(name, pbmode){
 //start loading the images for the next playback frame
 	for (i=1; i<=$(".camCheck").size(); i=i+1){
 		if ($("#showCam"+i).attr('checked') == 1 ){
-			imgSrc[i]  = "flight_number_";
+/*TODO: put this back*/
+//			imgSrc[i]  = "flight_number_";
+			imgSrc[i]  = "http://lenado.eol.ucar.edu/camera/flight_number_";
 		 	imgSrc[i] += flightNumber;
 			imgSrc[i] += "/";
 			imgSrc[i] += $("#showCam"+i).attr('alt');
@@ -56,7 +58,19 @@ function setImgs(name, pbmode){
 		}	
 	}	
 		
-	$("#imgNum").html(name);
+	$("#imgNum").html(niceTime(name));
+	
+}
+function niceTime(stdtime) {
+	if (stdtime == undefined) { return 0; }
+	var imgdate = stdtime.slice(0,6);
+	var imgtime = stdtime.slice(7,13);
+	return  imgdate.slice(2,4) + "/" + 
+		imgdate.slice(4,6) + "/" +
+		imgdate.slice(0,2) + " " +
+		imgtime.slice(0,2) + ":" +
+		imgtime.slice(2,4) + ":" +
+		imgtime.slice(4,6);
 }
 
 function timedFunc() {
@@ -94,10 +108,10 @@ function checkReadyImgs() {
 //if so, set image 'src', and start next frame (playFunc())
 	var numChecked = $(".camCheck:checked").size();
 	if (imgsReady < numChecked){
-//		$(".loading").show();
+		$(".loading").show();
 		setTimeout("checkReadyImgs()", 10);
 	} else {	
-//		$(".loading").hide();
+		$(".loading").hide();
 		for (i=1; i<=$(".camCheck").size(); i=i+1){
 			if ($("#showCam"+i).attr('checked') == 1 ){
 				$("#cam"+i).attr('src', imgSrc[i]).show();
@@ -170,11 +184,6 @@ function buildImageTable(sideways) {
 function setupGlobals(){
 	//get data from server needed for setting up the page
 	$.getJSON("getData.php", function(data){
-		//check for offset between local and server clock
-		var servDate = new Date;
-		servDate.setTime(data.datetime);
-		var locDate = new Date();
-		offsetTime = servDate.valueOf() - locDate.valueOf();
 
 		//update flight number from DB
 		flightNumber = data.curFlNum;
@@ -214,7 +223,7 @@ $(function(){
 	});
 
 	//set up tabs
-	$("#tabs").tabs();		
+//	$("#tabs").tabs();		
 
 	//set up Slider
 	$('#slider').slider({
@@ -223,12 +232,14 @@ $(function(){
 		step: 1,
 		slide: function(event, ui) {
 			$("#autoUpdate").attr("checked", false);
+			var curtimedate = new Date();
+			var infostring = "&laquo ";
 			var mins=Math.floor(-ui.value/60);
-			if (mins) {
-				$("#imgNum").html(mins + " Minutes " + (-ui.value%60) + " Seconds Ago");
-			} else {
-				$("#imgNum").html((-ui.value%60) + " Seconds Ago");
-			}
+			if (mins) { infostring +=  mins + " Minutes " + (-ui.value%60) + " Seconds Ago"; }
+			else { infostring += (-ui.value%60) + " Seconds Ago"; }
+			curtimedate.setTime(now.valueOf() + (1000*ui.value) );
+			infostring += ("&raquo " + niceTime(curtimedate.format("yymmdd-HHMMss")));
+			$("#imgNum").html(infostring);
 		},
 		stop: function(event, ui) {
 			getNames(ui.value, false)

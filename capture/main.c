@@ -278,7 +278,11 @@ int updatePostgres(PGconn *conn, const char * img_name, int camNum) {
 int getDbFlNum(PGconn *conn, char **flNum) {
 	PGresult *res;
 	res = PQexec(conn, "SELECT value FROM global_attributes WHERE key='FlightNumber'");
-	defaults(flNum,trimWhiteSpace(PQgetvalue(res, 0, 0)));
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        fprintf(stderr, "could not get flight number from DB: %s", PQerrorMessage(conn));
+		exit(1);
+	} 
+	else defaults(flNum,trimWhiteSpace(PQgetvalue(res, 0, 0)));
 	return 1;
 }
 
@@ -348,7 +352,7 @@ char *trimWhiteSpace(char *input) {
 	/* this function sets the end of a string at the first instance of two spaces
        it is useful for trimming whitespace at the end of a string:
         i.e 'hello Tom \n and Jerry' => 'hello Tom'
-            'rf09   '         => 'rf09' 
+            'rf09       '     => 'rf09' 
 	*/
 
 	int i=0;

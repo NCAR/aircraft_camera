@@ -29,6 +29,7 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 
 	/* Start with default values, config file values will overwrite them */
 	applyDefaults(camConf);
+	camConf->guid = guidIN;
 
 	while(!feof(file)){
 		/* get one line (if line is longer than 200 chars, this might break)
@@ -55,7 +56,6 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 					sscanf(value, "%llx", &guidOUT);
 					if (guidOUT == guidIN){
 						foundID = 1;
-						camConf->guid = guidOUT;
 					}
 				}
 			} 

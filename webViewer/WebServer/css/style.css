@@ -44,11 +44,16 @@ table
 	padding: 10px 10px 10px 10px;
 	background-color:#f0f0f0;
 	border: 1px dotted #808080;
+	font-size: 1.1em;
 }
 
 .greyBox p 
 {
 	margin: 3px 0px 0px 0px;
+}
+
+.greyBox label {
+	font-size: 1.1em;
 }
 
 .loading
@@ -59,12 +64,18 @@ table
 
 .fdName
 {
-	font: 75% "Trebuchet MS", sans-serif;
+	font: 15px "Trebuchet MS", sans-serif;
 }
 
 .units
 {
-	font: 65% "Trebuchet MS", sans-serif;
+	font: 13px "Trebuchet MS", sans-serif;
+}
+
+#slider {
+	font-size: 2em;
+	width: 94%;
+	margin-left: .7em;
 }
 
 .grad1

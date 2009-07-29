@@ -1,6 +1,6 @@
 OBJECTS = main.o getIMG.o parseFile.o writejpeg.o writepng.o xmp.o
 FLAGS = -Wall
-LIBS = -ldc1394 -lraw1394 -ljpeg -lpng -lpq -lexiv2
+LIBS = -ldc1394 -ljpeg -lpng -lpq -lexiv2
 
 all: capture
 

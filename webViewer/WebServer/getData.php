@@ -1,8 +1,8 @@
 <?php
 	//display errors
-	ini_set('display_errors', '1');
+	ini_set('display_errors','1');
 
-	//don't let browsers cache this page
+    //make sure that browsers do not cache this page
 	if (isset($_SERVER['HTTP_USER_AGENT']) && (strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== false)) {
 	  # This is for Internet Explorer, the browser that doesn't listen to HTTP standards.
 	  header('Cache-Control: no-cache');
@@ -21,26 +21,23 @@
 	$dbconn = pg_connect("host=$dbh dbname=$dbd user=$dbU")
 		or die('Could not connect: '.pg_last_error());
 
-	//get latest images array from database
-	$query = "SELECT latest FROM camera";
+	//get the hostname of the camserver which is updating the database 
+	//		This is used by the viewer to send start/stop requests to
+	//		camserver instead of the webserver
+	$query = "SELECT cam_host FROM camera";
 	$result = pg_query($query) or die('Query Failed: '. pg_last_error());
-	$image = pg_fetch_row($result);
+	$chost = pg_fetch_row($result);
 
-	//use regex to parse individual images from "array" passed back from postgres
-	preg_match_all('/\d+\-\d+/', $image[0], $latest);
+	//get the flight number from the database
+	$query = "SELECT value FROM global_attributes WHERE key='FlightNumber'";
+	$result = pg_query($query) or die('Query Failed: '. pg_last_error());
+	$flNum = str_replace(" ","",pg_fetch_array($result));
 
-	//Encode into JSON format and send back to viewer - could use json_encode 
-	//			but I need to add '.jpg' to the end of each element anyway
-	$i=0;
-	echo '{"jsonImgs": [';
-	foreach ($latest[0] as $lat) {
-		if ($i>0) echo ", ";
-		echo "\"$lat.jpg\"";
-		$i++;
-	}
-	echo"]} ";
+	//put all data in an array, pack into JSON and return it to the viewer
+	$a = array('chost'=>$chost[0], 'curFlNum'=>$flNum[0]);
+	echo json_encode($a);
 
-	//close db connection
+	//close the database connection
 	pg_free_result($result);
 	pg_close($dbconn);
 
