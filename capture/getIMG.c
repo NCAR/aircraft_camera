@@ -12,7 +12,7 @@
 #include "writejpeg.h"
 #include "writepng.h"
 
-/* C++ program for handling XMP data */
+/* this prototype allows calling the addXMP c++ function */
 extern int addXMP(const char *, camConf_t*, dc1394camera_t *);
 
 void cleanup_and_exit(dc1394camera_t *camera){

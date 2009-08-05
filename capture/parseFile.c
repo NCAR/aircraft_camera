@@ -173,7 +173,7 @@ void applyDefaults(camConf_t *camConf){
 
 	camConf->guid = 0;
 	strcpy(camConf->direction,"none");
-	camConf->iso = 400;
+	camConf->iso = DC1394_ISO_SPEED_400;
 	camConf->nightThreshold = 85;
 	camConf->mode = DC1394_VIDEO_MODE_FORMAT7_0; 
 	camConf->coding = DC1394_COLOR_CODING_RAW8;

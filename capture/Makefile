@@ -5,7 +5,7 @@ LIBS = -ldc1394 -ljpeg -lpng -lpq -lexiv2
 all: capture
 
 capture: $(OBJECTS) 
-	g++ -o capture $(OBJECTS) $(LIBS) $(FLAGS)
+	$(CXX) -o capture $(OBJECTS) $(LIBS) $(FLAGS)
 
 main.o: getIMG.h
 getIMG.o: getIMG.h writejpeg.h writepng.h

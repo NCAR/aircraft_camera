@@ -12,16 +12,16 @@
 	  header('Expires: Sat, 26 Jul 1997 05:00:00 GMT'); // Date in the past
 	}
 
-
+	$capture = "/etc/init.d/capture";
 
     if(isset($_GET["start"])) {
-		shell_exec("/etc/init.d/capture start > /dev/null &");
+		shell_exec("$capture start > /dev/null &");
 	}
 	else if(isset($_GET["stop"])) {
-		shell_exec("/etc/init.d/capture stop");
+		shell_exec("$capture stop");
 	}
 	else if(isset($_GET["restart"])) {
-		shell_exec("/etc/init.d/capture restart");
+		shell_exec("$capture restart");
 	}
 
 ?>

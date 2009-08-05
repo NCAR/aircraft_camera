@@ -196,8 +196,8 @@ void getTime(char* s){
 	time_t rawtime;
 
 	time(&rawtime);
-	t = localtime(&rawtime);
-//	t = gmtime(&rawtime);
+//	t = localtime(&rawtime);
+	t = gmtime(&rawtime);
 
 	/* make time string; note that tm_mon is 0-11, not 1-12 */
 	sprintf(s, "%2.2d%2.2d%2.2d-%2.2d%2.2d%2.2d", t->tm_year%100, t->tm_mon+1,
@@ -278,7 +278,7 @@ int updatePostgres(PGconn *conn, const char * img_name, int camNum) {
 int getDbFlNum(PGconn *conn, char **flNum) {
 	PGresult *res;
 	res = PQexec(conn, "SELECT value FROM global_attributes WHERE key='FlightNumber'");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         fprintf(stderr, "could not get flight number from DB: %s", PQerrorMessage(conn));
 		exit(1);
 	} 
