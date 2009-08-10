@@ -1,11 +1,14 @@
 #!/bin/bash
 
+#This is the initscript for the capture program
+
 #set these vars correctly for your setup
 dbHOST=acserver                   # real-time postgres db hostname
 capture=/usr/bin/capture          # path to capture program
 pidfile=/var/run/capture/capture.pid      # path to pid file
-LOC='/scr/rafcam/flight_number_'  #location where images will be stored (should be on webserver)
+LOC='/mnt/camera_images/flight_number_'  #location where images will be stored (should be on webserver)
 CONF='/etc/capture.conf'          #location of camera configuration file
+monitor_script='/usr/sbin/capture_monitor.sh'
 
 start() {
 
@@ -21,9 +24,15 @@ start() {
 		echo $cap_pid > $pidfile
 		echo started cams
 
+	        #launch a monitor script, unless start was called by an already running monitor
+	        if [ "$1" = "launch" ]; then
+        	    $monitor_script & 
+		    echo "started monitor"
+	        fi
+
 		return $retval
 	else
-		ps aux | grep -v grep | grep $capture > /dev/null
+		junk=`ps aux | grep -v grep | grep $capture`
 		if [ $? -eq 0 ]
 		then
 			echo already running
@@ -37,12 +46,12 @@ start() {
 
 stop() {
 	cap_pid=`cat $pidfile`
-	kill -s INT $cap_pid  #send ctrl-c signal to allow program to clean up
+	junk=`kill -s INT $cap_pid`  #send ctrl-c signal to allow program to clean up
 	RETVAL=$?
 	
 	cat /dev/null > $pidfile #clear pid file
 	echo stopped cams
-	psql -U ads -d real-time -h $dbHOST -c "UPDATE camera SET status=0,message='Recording Stopped';"
+	junk=`psql -U ads -d real-time -h $dbHOST -c "UPDATE camera SET status=0,message='Recording Stopped';"`
 	return $RETVAL
 }
 
@@ -58,7 +67,7 @@ status(){
 	
 	if [ -s "$pidfile" ]
 	then
-		ps aux | grep -v grep | grep $capture > /dev/null
+		junk=`ps aux | grep -v grep | grep $capture`
 		if [ $? -eq 0 ]
 		then
 			if [ ! "$STATUS" = "0" ]
@@ -85,8 +94,8 @@ status(){
 }
 
 case "$1" in
-  start)
-  	start
+  start) #standard init, we want to launch a monitor process as well
+  	start launch
 	;;
   stop)
   	stop
@@ -96,6 +105,9 @@ case "$1" in
 	;;
   status)
   	status	
+	;;
+  start_no_mon) #called by capture-monitor to restart the process, dont start another monitor
+	start
 	;;
   *)
 	echo $"Usage: $0 {start|stop|restart|status}"

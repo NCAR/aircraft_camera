@@ -1,8 +1,9 @@
 OBJECTS = main.o getIMG.o parseFile.o writejpeg.o writepng.o xmp.o
 FLAGS = -Wall
-LIBS = -ldc1394 -ljpeg -lpng -lpq -lexiv2
+DCLIB = -ldc1394
+LIBS = $(DCLIB) -ljpeg -lpng -lpq -lexiv2
 
-all: capture
+all: capture capture_reset_bus
 
 capture: $(OBJECTS) 
 	$(CXX) -o capture $(OBJECTS) $(LIBS) $(FLAGS)
@@ -14,6 +15,9 @@ writejpeg.o: writejpeg.h
 writepng.o: writepng.h
 xmp.o: getIMG.h
 
+capture_reset_bus:
+	$(CC) reset_bus.c -o capture_reset_bus $(DCLIB)
+
 clean:
-	rm -f $(OBJECTS) capture
+	rm -f $(OBJECTS) capture capture_reset_bus
 

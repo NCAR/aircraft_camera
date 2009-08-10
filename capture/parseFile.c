@@ -179,8 +179,9 @@ void applyDefaults(camConf_t *camConf){
 	camConf->coding = DC1394_COLOR_CODING_RAW8;
 	camConf->bayerMethod = DC1394_BAYER_METHOD_BILINEAR;
 	camConf->raw = 0;
-	camConf->ppm = 0;
 	camConf->jpg = 1;
+	camConf->ppm = 0;
+	camConf->png = 0;
 	camConf->quality = 80;
 	strcpy(camConf->flNum,"none");
 }
