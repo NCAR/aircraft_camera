@@ -52,6 +52,9 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 	err=dc1394_video_set_mode(camera, camConfig->mode);
     DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set video mode\n");
 
+	err=dc1394_feature_whitebalance_set_value(camera, camConfig->whiteBalance_blue, camConfig->whiteBalance_red);
+    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set white balance\n");
+
     err=dc1394_format7_set_color_coding(camera, camConfig->mode, camConfig->coding);
     DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set color coding\n");
 

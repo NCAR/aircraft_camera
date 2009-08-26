@@ -5,6 +5,8 @@
 typedef struct {
 	long long guid;			//64-bit GUID of the camera
 	int iso;				//ISO setting
+	int whiteBalance_red;	//White balance - red component
+	int whiteBalance_blue;	//White balance - blue component
 	int nightThreshold;		//Night detection threshold (100 = off)
 	uint32_t mode;			//Camera mode - almost always mode7
 	uint32_t coding;		//Color Coding - RAW8 or RAW16 for color cameras

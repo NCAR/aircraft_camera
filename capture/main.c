@@ -114,10 +114,10 @@ int main(int argc, char *argv[])
 	if(useDB) initPostgres(conn, camArray, list->num);
 
 	/* make image directory structure */
-	sprintf(directory, "mkdir %s%s &> /dev/null",prefix, flNum); 
+	sprintf(directory, "mkdir -m 777 %s%s &> /dev/null",prefix, flNum); 
 	system(directory);
 	for (i=0; i<list->num; i++){
-		sprintf(directory, "mkdir %s%s/%s &> /dev/null", prefix, 
+		sprintf(directory, "mkdir -m 777 %s%s/%s &> /dev/null", prefix, 
 				flNum, camArray[i]->direction); 
 		system(directory);
 	}

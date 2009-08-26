@@ -74,6 +74,8 @@ try {
 	xmpData["Xmp.dc.iso"]  = 100*(1<<(camConf->iso));   
 	xmpData["Xmp.dc.bayer_method"]  = dc_debayer_array[camConf->bayerMethod]; 
 	xmpData["Xmp.dc.quality"]  = camConf->quality;    
+	xmpData["Xmp.dc.whiteBal_blue"]  = camConf->whiteBalance_blue;    
+	xmpData["Xmp.dc.whiteBal_red"]  = camConf->whiteBalance_red;    
 	xmpData["Xmp.dc.UTC_timestamp"]  = file.substr(file.length()-17, 13);
 
     /* open the image file for writing */

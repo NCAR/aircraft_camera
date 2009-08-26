@@ -155,6 +155,10 @@ void fillConf(camConf_t *camConf, char* param, char* value){
 	}else if (!strcmp(param, "raw")){
 		if (value[0] == 'y') camConf->raw = 1;
 		else camConf->raw = 0;
+	}else if (!strcmp(param, "whitebalance_blue")){
+		camConf->whiteBalance_blue = atoi(value);
+	}else if (!strcmp(param, "whitebalance_red")){
+		camConf->whiteBalance_red = atoi(value);
 	}else if (!strcmp(param, "quality")){
 		camConf->quality = atoi(value);
 	}else if (!strcmp(param, "nightthreshold")){
@@ -174,6 +178,8 @@ void applyDefaults(camConf_t *camConf){
 	camConf->guid = 0;
 	strcpy(camConf->direction,"none");
 	camConf->iso = DC1394_ISO_SPEED_400;
+	camConf->whiteBalance_red = 75;
+	camConf->whiteBalance_blue = 75;
 	camConf->nightThreshold = 85;
 	camConf->mode = DC1394_VIDEO_MODE_FORMAT7_0; 
 	camConf->coding = DC1394_COLOR_CODING_RAW8;
