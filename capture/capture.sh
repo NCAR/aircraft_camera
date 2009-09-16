@@ -6,9 +6,10 @@
 dbHOST=acserver                   # real-time postgres db hostname
 capture=/usr/bin/capture          # path to capture program
 pidfile=/var/run/capture/capture.pid      # path to pid file
-LOC='/mnt/camera_images/flight_number_'  #location where images will be stored (should be on webserver)
+LOC='/mnt/cam/camera_images/flight_number_'  #location where images will be stored (should be on webserver)
 CONF='/etc/capture.conf'          #location of camera configuration file
 monitor_script='/usr/sbin/capture_monitor.sh'
+logfile='/home/ads/capture.log'
 
 start() {
 
@@ -16,7 +17,7 @@ start() {
 	if [ ! -s "$pidfile" ]
 	then
 		#start capture program
-		($capture -c $CONF -f $LOC -d $dbHOST ) &
+		($capture -c $CONF -f $LOC -d $dbHOST &> $logfile) &
 
 		#store pid for stop script
 		cap_pid=$!

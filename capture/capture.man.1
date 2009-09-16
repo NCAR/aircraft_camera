@@ -1,0 +1,76 @@
+.TH CAPTURE 1 "June, 2009" "NCAR-EOL" "Camera Capture Program Manual"
+
+.SH NAME
+.P
+Capture
+
+.SH SYNOPSIS
+.P
+capture [-c <config file>] [-f <file prefix>] -d <database host> || <flight number>
+.P
+If you specify a database, the flight number will be pulled from the global_attributes table, otherwise you must specify a flight number on the command line.
+
+.SH DESCRIPTION
+.P
+This program finds any cameras on the Firewire (ieee1394) bus and attempts to capture images from them. The program can output raw CCD data, uncompressed color images (.ppm), lossy compressed imges (.jpg) or lossess compressed images (.png). The Program also keeps a PostgreSQL database up to date with the latest image written, as well as the direction/guid of each camera.
+
+.P
+The program attempts to capture images once per second, the only notable exception to this occurs when png output is enabled. The png comression takes too long and the once/second deadline is not met.
+
+.P
+The settings for each camera are defined in a config file. For more information about the config file 'man 5 capture' or visit this web page: http://wiki.eol.ucar.edu/sew/Aircraft/DigitalCamera.
+
+.SH OPTIONS
+.P
+.B
+	-c 
+config_file
+.RS
+Specify the configuration file to use; the default  is /etc/capture.conf.
+.RE
+
+.P
+.B
+	-f 
+file_prefix
+.RS
+Specify the directory in which the output images will be placed. The direction of the camera, and the name of the image will be added on. The default prefix is /scr/rafcam/flight_number_. The final full path of the image is this: 
+.RS
+<file_prefix>/<flight_number>/<camera_direction>/<date_time>.<format>
+.RE
+.RE
+
+.P
+.B
+	-d 
+database_host
+.RS
+Specify the hostname or ip address of the postgreSQL server that you want this capture program to update. The program will extract the flight number from the global_attributes table on the database on the specified host, It will then create a table called camera with the following structure:
+
+.P 
+ Column    |  Type   |  description 
+ ----------+---------+-----------
+ cam_host  | text    | hostname of computer running this program
+ status    | integer | 0 => not running, 1 => running
+ message   | text    | Status message for human readability
+ guid      | text[]  | Array of GUID for each cameras
+ direction | text[]  | Array of directions of each cameras
+ latest    | text[]  | Array of latest image saved from each camera
+.RE
+
+.P
+flight_number
+.RS
+If you do not specify a database, you must manually specify the flight number (usefull for testing).
+.RE
+
+
+.SH EXAMPLE
+.P
+Start capturing using the local config file, update the databse on acserver, and store images in the diretory /scr/rafcam/flight_number_<flight_number_from_databse>/<camera_direction>/<timestamp>.[jpg]:
+.P
+capture -c ./cameras.conf -d acserver -f /scr/rafcam/flight_number_
+
+.SH AUTHOR
+Dan Lagreca 
+June 19, 2009

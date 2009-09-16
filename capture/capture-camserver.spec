@@ -12,28 +12,22 @@ BuildRequires: libdc1394 >= 2.1.0-1 libjpeg-devel libpng-devel libpqxx-devel exi
 Buildroot: %{_tmppath}/%{name}-root
 
 %description
-This program finds any cameras  on  the  Firewire  (ieee1394)  bus  and
-attempts  to  capture  images from them. The program can output raw CCD
-data, uncompressed color images (.ppm), lossy compressed  imges  (.jpg)
-or  lossess  compressed  images  (.png). The Program also keeps a Post-
-greSQL database up to date with the latest image written,  as  well  as
-the direction/guid of each camera, and  process  status  (running/not).
+This program finds any cameras on the Firewire (ieee1394) bus and attempts to capture images from them. The program can output raw CCD data, uncompressed color images (.ppm), lossy compressed imges (.jpg) or lossess compressed images (.png). The Program also keeps a Post- greSQL database up to date with the latest image written, as well as the direction/guid of each camera, and process status (running/not).
 
-The  program  attempts  to  capture  images  once  per second, the only
-notable exception to this occurs when png output is  enabled.  The  png
-comression takes too long and the once/second deadline is not met.
+The program attempts to capture images once per second, the only notable exception to this occurs when png output is enabled. The png comression takes too long and the once/second deadline is not met.
 
 %prep
 %setup
 
 %build
 make
+gzip -c capture.man.1 > capture.1.gz
+gzip -c capture.man.5 > capture.5.gz
 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr/{{s,}bin,share/man/man{1,5}}
-mkdir -p $RPM_BUILD_ROOT/etc/init.d/
-mkdir -p $RPM_BUILD_ROOT/etc/
+mkdir -p $RPM_BUILD_ROOT/etc/{rc.d/rc3.d,init.d}
 mkdir -p $RPM_BUILD_ROOT/var/run/capture/
 mkdir -p $RPM_BUILD_ROOT/var/www/html/camera
 cp capture $RPM_BUILD_ROOT/%{_bindir}/
@@ -44,9 +38,15 @@ cp capture_reset_bus $RPM_BUILD_ROOT/usr/sbin/
 cp capture_monitor.sh $RPM_BUILD_ROOT/usr/sbin/
 cp capture.sh $RPM_BUILD_ROOT/etc/init.d/capture
 cp capture.php $RPM_BUILD_ROOT/var/www/html/camera/
+ln -s $RPM_BUILD_ROOT/etc/init.d/capture $RPM_BUILD_ROOT/etc/rc.d/rc3.d/K99capture
 
 %post
 chkconfig httpd on
+echo "/mnt/cam	/etc/local/capture.map nolock,nosuid,nodev,rsize=32768,wsize=32768,intr" >> /etc/auto.master
+echo "camera_images	acserver.raf.ucar.edu:/mnt/r1/camera_images" >> /etc/local/capture.map
+
+%clean
+rm -rf $RPM_BUILD_ROOT
 
 %files
 %dir %attr(0775,ads,apache) /var/run/capture
@@ -55,6 +55,7 @@ chkconfig httpd on
 %attr(644,root,root) %doc %{_mandir}/man1/capture.1.gz
 %attr(644,root,root) %doc %{_mandir}/man5/capture.5.gz
 %attr(0774,ads,apache) /etc/init.d/capture
+/etc/rc.d/rc3.d/K99capture
 %attr(0664,ads,apache) /var/www/html/camera/capture.php
 %attr(0774,ads,apache) /usr/sbin/capture_monitor.sh
 %attr(0774,ads,apache) /usr/sbin/capture_reset_bus
@@ -64,7 +65,7 @@ chkconfig httpd on
 - added the capture_reset_bus and capture_monitor portions
 
 * Tue Jul 28 2009 <dlagreca@ucar.edu> 0.5-1
-- merged capture and capture-camserver into capture-cameserver
+- merged capture and capture-camserver into capture-camserver
 
 * Tue Jun 30 2009 <dlagreca@ucar.edu> 0.5-1
 - created initial package

@@ -1,0 +1,147 @@
+.TH CAPTURE 5 "June, 2009" "NCAR-EOL" "Camera Config File Manual"
+
+.SH NAME
+.P
+capture.conf
+
+.SH DESCRIPTION
+.P
+This file contians any per-camera settings or parameters.
+
+.SH GUIDELINES 
+.P
+ All parameters for a camera go below the GUID of that camera.
+ Parameters below can be in any order.
+ Only one parameter per line.
+ Capitalization does not matter.
+ Default value are used when parameter is omitted.
+
+.SH PARAMETERS [DEFAULT]
+.P
+.B
+camID
+.RS
+The 64-bit GUID from the camera in hexidecimal [0].
+.RE
+.P
+.B
+direction 
+.RS
+The direction the camera is facing [none]. This will also be the name of the sub-folder for images from this camera.
+.RE
+.P
+.B
+nightThreshold
+.RS
+Auto gain threshold for night detection, in percent [85]. If this number is set to 100 or higher, the camera will never auto-disable.
+.RE
+.P
+.B
+iso
+.RS
+Iso speed for that camera [400].
+.RE
+.P
+.B
+mode
+.RS
+Ieee1394 camera mode [format7_mode0].
+.RE
+.P
+.B
+coding
+.RS
+Ieee1394 camera color coding [raw8].
+.RE
+.P
+.B
+raw
+.RS
+Output the raw pixel data (not de-bayered) [no].
+.RE
+.P
+.B
+whitebalance_red
+.RS
+Set the red component of the whitebalance [75].
+.RE
+.P
+.B
+whitebalance_blue 
+.RS
+Set the blue component of the whitebalance [75].
+.RE
+.P
+.B
+ppm
+.RS
+Output uncompressed ppm image file [no].
+.RE
+.P
+.B
+jpg
+.RS
+Output (lossy) compressed jpg image file [yes].
+.RE
+.P
+.B
+quality
+.RS
+Quality of jpeg comression, in percent [80].
+.RE
+.P
+.B
+png
+Output (lossless) compressed png image file [no]. png is too slow, images will not be captured once/second
+.RE
+
+
+.SH EXAMPLE
+.P
+ #Point Grey Flea 
+ camID 00b09d0100537b6e
+ DIRECTION down
+ NIGHTTHRESHOLD 100 # 100 = do not stop at night
+ ISO 400
+ MODE format7_mode0
+ WHITEBALANCE_BLUE 75
+ WHITEBALANCE_RED 75
+ CODING RAW8
+ JPG yes
+ QUALITY 80
+ PNG no
+ PPM no
+ RAW no
+ 
+ #Point Grey Grasshopper
+ camID 00b09d01006e79b3
+ DIRECTION left
+ NIGHTTHRESHOLD 100
+ MODE format7_mode0
+ WHITEBALANCE_BLUE 75
+ WHITEBALANCE_RED 75
+ CODING MONO8
+ JPG yes 
+ QUALITY 80
+ PNG no
+ PPM no
+ RAW no
+ 
+ #Point Grey Scorpion
+ camID 00b09d010052b4e3
+ DIRECTION forward
+ NIGHTTHRESHOLD 85
+ MODE format7_mode0
+ WHITEBALANCE_BLUE 75
+ WHITEBALANCE_RED 75
+ CODING RAW8
+ JPG yes 
+ QUALITY 80
+ PNG no
+ PPM no
+ RAW no
+
+
+.SH AUTHOR
+Dan Lagreca 
+June 19, 2009

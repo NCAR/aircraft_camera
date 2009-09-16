@@ -67,7 +67,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 //    err=dc1394_video_set_framerate(camera, DC1394_FRAMERATE_7_5);
 //    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set framerate\n");
 
-    err=dc1394_capture_setup(camera,4, DC1394_CAPTURE_FLAGS_DEFAULT);
+    err=dc1394_capture_setup(camera,4, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
     DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not setup camera-\n \
 			make sure that the video mode and framerate are\n \
 			supported by your camera\n");

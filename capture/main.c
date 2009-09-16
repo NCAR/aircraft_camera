@@ -226,7 +226,7 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 
 	/* create new camera table */
 	res = PQexec(conn,
-	"CREATE TABLE camera ( cam_host text, status integer, message text, guid text[], direction text[], latest text[])");
+	"CREATE TABLE camera ( last_update timestamp with time zone, status integer, message text, guid text[], direction text[], latest text[])");
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "create table failed: %s", PQerrorMessage(conn));
         PQclear(res);
@@ -234,8 +234,8 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 
 	/* create single row, cameras will be added as array elements */
 	sprintf(command, 
-		"INSERT INTO camera VALUES ('%s', 1, 'Recording Images', '{0}', '{0}', '{0}')",
-		hostname);
+		"INSERT INTO camera VALUES (current_timestamp, 1, 'Recording Images', '{0}', '{0}', '{0}')"
+		);
 	res = PQexec(conn, command);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         fprintf(stderr, "create row failed: %s", PQerrorMessage(conn));
@@ -263,7 +263,7 @@ int updatePostgres(PGconn *conn, const char * img_name, int camNum) {
 	char command[100];
 	PGresult *res;
 
-	sprintf(command, "UPDATE camera SET latest[%d] ='%s'",
+	sprintf(command, "UPDATE camera SET latest[%d] ='%s',last_update=current_timestamp",
 			 camNum+1, img_name);
 	res = PQexec(conn, command);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
