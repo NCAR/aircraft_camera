@@ -4,6 +4,9 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <dc1394/dc1394.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -24,15 +27,16 @@ void cleanup_and_exit(dc1394camera_t *camera){
     exit(1);
 }
 
-int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
+int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *night){
 	/*  Gets an image from the specified camera and 
 		writes to the specified filename */
 	
 	FILE* imagefile;
 	char full_file_name[256];
 	unsigned char *reducedFrame;
-	int numPix, i, night=0;
+	int numPix, i, totalSize=0;
 	unsigned gain, minGain, maxGain;
+	struct stat st;
     dc1394camera_t *camera;
     dc1394video_frame_t *frame=NULL;
     dc1394error_t err;
@@ -93,7 +97,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 
 	err=dc1394_feature_get_value(camera, DC1394_FEATURE_GAIN, &gain);
     DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Failed to read gain\n");
-	if ((100*((float)gain-minGain))/(maxGain-minGain) > (camConfig->nightThreshold)) night = 1;
+	if ((100*((float)gain-minGain))/(maxGain-minGain) > (camConfig->nightThreshold)) night += 1;
 //	printf ("gain: %f, threshold: %d, night: %d\n", (100*((float)gain-minGain))/(maxGain-minGain), camConfig->nightThreshold, night);
 
 	/* save raw binary data if requested */
@@ -107,6 +111,8 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 		fwrite((const char *)frame->image, 1, frame->total_bytes, imagefile);
 	    fclose(imagefile);
 //    	printf("wrote: %s\n", full_file_name);
+		stat(full_file_name, &st);
+		totalSize += st.st_size;
 	}
 
     /* debayer the image for all other formats*/
@@ -128,6 +134,8 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 		fwrite((const char *)new_frame->image, 1, new_frame->total_bytes, imagefile);
 	    fclose(imagefile);
 //    	printf("wrote: %s\n", full_file_name);
+		stat(full_file_name, &st);
+		totalSize += st.st_size;
 	}
 
 	/* compress and save image as .jpg image, if requested */	
@@ -151,6 +159,8 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d){
 		}
 		addXMP(full_file_name, camConfig, camera);
 //  		printf("wrote: %s, at %d%% quality\n", full_file_name, camConfig->quality);
+		stat(full_file_name, &st);
+		totalSize += st.st_size;
 	}
 
 	/* compress and save the image as a .png image, if requested */
@@ -164,6 +174,8 @@ libexiv2 in that is available in the epel repos at this time - it does work with
 the latest (svn) verison of libexiv2 */
 //		addXMP(full_file_name, camConfig, camera); 
 //  		printf("wrote: %s\n", full_file_name);
+		stat(full_file_name, &st);
+		totalSize += st.st_size;
 	}
 
 	/* clean up and return */
@@ -173,7 +185,7 @@ the latest (svn) verison of libexiv2 */
     dc1394_capture_stop(camera);
     dc1394_camera_free(camera);
 
-    return night;
+    return totalSize;
 }
 
 void printCamConf(camConf_t *camArray) {

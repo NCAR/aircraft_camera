@@ -22,7 +22,7 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 	file = fopen(filename, "r");
 	if (!file) {
 		perror("unable to open config file");
-		return 0;
+		exit(1);
 	}
 
 	long long guidOUT;
