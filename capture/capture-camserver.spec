@@ -45,6 +45,9 @@ chkconfig httpd on
 echo "/mnt/cam	/etc/local/capture.map nolock,nosuid,nodev,rsize=32768,wsize=32768,intr" >> /etc/auto.master
 echo "camera_images	acserver.raf.ucar.edu:/mnt/r1/camera_images" >> /etc/local/capture.map
 
+echo "#firewire cameras " >> /etc/udev/rules.d/50-udev.rules
+echo "SUBSYSTEM==\"firewire\", OWNER=\"ads\", GROUP=\"ads\", MODE=\"0666\" " >> /etc/udev/rules.d/50-udev.rules
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 

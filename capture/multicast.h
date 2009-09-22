@@ -35,13 +35,13 @@
 /*struct to hold information for xml packet*/
 typedef struct {
 	int health;				//xml health field
-	int numCams;			//running avg size for each camera
-	int *lastSize;			//running avg size for each camera
+	int numCams;			//number of cameras on bus
+	int *lastSize;			//size of last fileset written
 	float *runningAvg;		//running avg size for each camera
 	char clock[21];			//xml clock field
 	char *html;				//xml html field
 	char **cam_row;			//html rows for each camera (created once)
-	char **latest;			//html rows for each camera (created once)
+	char **latest;			//latest filename for each camera
 } status_t;
 
 void multicast_status_init(status_t *status, camConf_t **camArray, int numCams);

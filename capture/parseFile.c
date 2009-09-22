@@ -2,15 +2,7 @@
  * Parses a camera config file, format specified in sample config file
  */
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
-#include <dc1394/dc1394.h>
-#include <inttypes.h>
-#include <ctype.h> //for tolower
 #include "parseFile.h"
-#include "getIMG.h"
 
 int getConf(const char *filename, long long guidIN, camConf_t *camConf){ 
 /*fills in the camConf with all available data from the conf file (specified
@@ -21,6 +13,7 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 	char param[100], value[100], line[200];
 	file = fopen(filename, "r");
 	if (!file) {
+		syslog(LOG_ERR, "unable to open config file");
 		perror("unable to open config file");
 		exit(1);
 	}
@@ -165,8 +158,8 @@ void fillConf(camConf_t *camConf, char* param, char* value){
 		camConf->nightThreshold = atoi(value);
 	}else {
 		if(param[0] != '\0' && param[0] != '\n'){
-			printf("Warning: Invalid Parameter: \"%s\" in config file\n",
-					 param);
+			syslog(LOG_WARNING, 
+			"Warning: Invalid Parameter: \"%s\" in config file\n", param);
 		}
 	}
 	return;

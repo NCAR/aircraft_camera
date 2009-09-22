@@ -7,6 +7,7 @@
 #include <string>
 #include <cmath>
 #include <cassert>
+#include <syslog.h>
 #include "getIMG.h"
 
 extern "C" int addXMP(const char *fileName, camConf_t *camConf, dc1394camera_t *camera)
@@ -89,7 +90,8 @@ try {
     return 0;
 }
 catch (Exiv2::AnyError& e) {
-    std::cout << "Caught Exiv2 exception '" << e << "'\n";
+//    std::cout << "Caught Exiv2 exception '" << e << "'\n";
+    syslog(LOG_ERR, "Caught Exiv2 exception '%s'", e.what());
     return -1;
 }
 

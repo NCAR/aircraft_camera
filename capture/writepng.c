@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <syslog.h>
 #include <string.h>
  
 #define PNG_DEBUG 3
@@ -18,27 +19,27 @@ int write_PNG_file (const char *filename, int bit_depth, int image_height, int i
 	png_infop info_ptr;
 	FILE *fp = fopen(filename, "wb");
 	if (!fp) {
-		printf("error'd: unable to open file");
+		syslog(LOG_ERR,"[write_png_file] error'd: unable to open file");
 		return 1;
 	}
 	
 	/* create png structure */
 	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if (!png_ptr) {
-		printf("[write_png_file] png_create_write_struct failed");
+		syslog(LOG_ERR,"[write_png_file] png_create_write_struct failed");
 		return 1;
 	}
 	
 	/* create info structure */
 	info_ptr = png_create_info_struct(png_ptr);
 	if (!info_ptr) {
-		printf("[write_png_file] png_create_info_struct failed");
+		syslog(LOG_ERR,"[write_png_file] png_create_info_struct failed");
 		return 1;
 	}
 	
 	/* set error callback */
 	if (setjmp(png_jmpbuf(png_ptr))) {
-		printf("error'd: writing error");
+		syslog(LOG_ERR,"[write_png_file] error'd: writing error");
 		return 1;
 	}
 	

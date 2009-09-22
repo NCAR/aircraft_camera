@@ -5,9 +5,10 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h> //for exit()
+#include <errno.h>
 #include "jpeglib.h"
 #include <setjmp.h>
+#include <syslog.h>
 
 
 void write_JPEG_file (	const char * filename, int quality, int image_height, int image_width, unsigned char *image_buffer) {
@@ -24,8 +25,9 @@ void write_JPEG_file (	const char * filename, int quality, int image_height, int
 
   /* Step 2: specify data destination (eg, a file) */
   if ((outfile = fopen(filename, "wb")) == NULL) {
-    fprintf(stderr, "can't open %s\n", filename);
-    exit(1);
+	err(1, "%s", filename);
+    syslog(LOG_ERR, "failed to open jpeg output file: %s\n", filename);
+    return;
   }
   jpeg_stdio_dest(&cinfo, outfile);
 
@@ -57,6 +59,7 @@ void write_JPEG_file (	const char * filename, int quality, int image_height, int
   /* Step 7: release JPEG compression object */
   jpeg_destroy_compress(&cinfo);
 
+  return;
 }
 
 

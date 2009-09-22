@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include <time.h>
 #include "getIMG.h"
 #include "writejpeg.h"
 #include "writepng.h"
@@ -19,103 +20,124 @@
 extern int addXMP(const char *, camConf_t*, dc1394camera_t *);
 
 void cleanup_and_exit(dc1394camera_t *camera){
-	/*  Releases the cameras and exits */
+	/* error function: Releases the cameras and exits */
 
-    dc1394_video_set_transmission(camera, DC1394_OFF);
-    dc1394_capture_stop(camera);
-    dc1394_camera_free(camera);
-    exit(1);
+	dc1394_video_set_transmission(camera, DC1394_OFF);
+	dc1394_capture_stop(camera);
+	dc1394_camera_free(camera);
+	exit(1);
+}
+
+void cleanup_cams(camConf_t **camArray, int numCams) {
+	/* function called before program exit, 
+		sends stop signal to cameras and
+		releases all allocated DMA buffers 
+	*/
+	int i;
+	for (i=0; i<numCams; i++) {
+		dc1394_video_set_transmission(camArray[i]->cam, DC1394_OFF);
+		dc1394_capture_stop(camArray[i]->cam);
+		dc1394_camera_free(camArray[i]->cam);
+		free(camArray[i]);
+	}
+}
+
+int initCams(dc1394_t *d, camConf_t **camArray, int numCams) {
+	int i;
+	dc1394error_t err;
+
+	for (i=0; i<numCams; i++){	
+		camArray[i]->cam = dc1394_camera_new (d, camArray[i]->guid);
+		if (!camArray[i]->cam) {
+			dc1394_log_error("Failed to initialize camera with guid %llx",
+							 camArray[i]->cam->guid);
+			return 0;
+		}
+	
+		/* get gain boundaries */
+		err=dc1394_feature_get_boundaries(camArray[i]->cam, DC1394_FEATURE_GAIN, &(camArray[i]->minGain), &(camArray[i]->maxGain));
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Failed to read gain boundaries\n");
+	
+		err=dc1394_video_set_framerate(camArray[i]->cam, DC1394_FRAMERATE_15);
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Could not set framerate\n");
+
+		/* setup capture using settings from config file */
+		err=dc1394_video_set_mode(camArray[i]->cam, camArray[i]->mode);
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Could not set video mode\n");
+	
+		err=dc1394_feature_whitebalance_set_value(camArray[i]->cam, camArray[i]->whiteBalance_blue, camArray[i]->whiteBalance_red);
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Could not set white balance\n");
+	
+		err=dc1394_format7_set_color_coding(camArray[i]->cam, camArray[i]->mode, camArray[i]->coding);
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Could not set color coding\n");
+	
+		err=dc1394_format7_set_roi(camArray[i]->cam, camArray[i]->mode,
+					 DC1394_QUERY_FROM_CAMERA, DC1394_QUERY_FROM_CAMERA,
+					 DC1394_QUERY_FROM_CAMERA, DC1394_QUERY_FROM_CAMERA,
+					 DC1394_QUERY_FROM_CAMERA, DC1394_QUERY_FROM_CAMERA);
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Could not set roi\n");
+	 
+		err=dc1394_capture_setup(camArray[i]->cam,1, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Could not setup camera-\n \
+				make sure that the video mode and framerate are\n \
+				supported by your camera\n");
+
+		/* set single shot to avoid extranious data-transfer */
+		err=dc1394_video_set_one_shot(camArray[i]->cam, DC1394_ON);
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),"Could not set one shot");
+	
+		/* have the camera start sending us data */
+		err=dc1394_video_set_transmission(camArray[i]->cam, DC1394_ON);
+		DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camArray[i]->cam),
+			"Could not start camera iso transmission\n");
+	}
+	return 1;
 }
 
 int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *night){
 	/*  Gets an image from the specified camera and 
-		writes to the specified filename */
+		writes to the specified filename. 
+		updates the night parameter passed in by reference.
+		returns the total number of byte written to filesystem.
+	*/
 	
 	FILE* imagefile;
 	char full_file_name[256];
 	unsigned char *reducedFrame;
 	int numPix, i, totalSize=0;
-	unsigned gain, minGain, maxGain;
+	unsigned gain;
 	struct stat st;
-    dc1394camera_t *camera;
-    dc1394video_frame_t *frame=NULL;
-    dc1394error_t err;
+	dc1394video_frame_t *frame=NULL;
+	dc1394error_t err;
 
-    camera = dc1394_camera_new (d, camConfig->guid);
-    if (!camera) {
-        dc1394_log_error("Failed to initialize camera with guid %llx",
-						 camera->guid);
-        return 1;
-    }
-//    printf("initialized camera GUID %"PRIx64"\n", camera->guid);
+	/* set single shot to avoid extranious data-transfer */
+	err=dc1394_video_set_one_shot(camConfig->cam, DC1394_ON);
+	DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camConfig->cam),"Could not set one shot");
 
-    /* setup capture using settings from config file */
-    err=dc1394_video_set_iso_speed(camera, camConfig->iso);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set iso speed");
-
-	err=dc1394_video_set_mode(camera, camConfig->mode);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set video mode\n");
-
-	err=dc1394_feature_whitebalance_set_value(camera, camConfig->whiteBalance_blue, camConfig->whiteBalance_red);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set white balance\n");
-
-    err=dc1394_format7_set_color_coding(camera, camConfig->mode, camConfig->coding);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set color coding\n");
-
-    err=dc1394_format7_set_roi(camera, camConfig->mode,
-                 DC1394_QUERY_FROM_CAMERA, DC1394_QUERY_FROM_CAMERA,
-                 DC1394_QUERY_FROM_CAMERA, DC1394_QUERY_FROM_CAMERA,
-                 DC1394_QUERY_FROM_CAMERA, DC1394_QUERY_FROM_CAMERA);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set roi\n");
- 
-//    err=dc1394_video_set_framerate(camera, DC1394_FRAMERATE_7_5);
-//    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not set framerate\n");
-
-    err=dc1394_capture_setup(camera,4, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not setup camera-\n \
-			make sure that the video mode and framerate are\n \
-			supported by your camera\n");
-
-    /* have the camera start sending us data */
-    err=dc1394_video_set_transmission(camera, DC1394_ON);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),
-		"Could not start camera iso transmission\n");
-
-    /* capture one frame */
-//	printf("requesting image\n");
-    err=dc1394_capture_dequeue(camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not capture a frame\n");
-//	printf("image recieved\n");
-    
-    /* stop data transmission */
-    err=dc1394_video_set_transmission(camera,DC1394_OFF);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not stop the camera?\n");
-
-	/* get gain data - to tell if it's night */
-	err=dc1394_feature_get_boundaries(camera, DC1394_FEATURE_GAIN, &minGain, &maxGain);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Failed to read gain boundaries\n");
-
-	err=dc1394_feature_get_value(camera, DC1394_FEATURE_GAIN, &gain);
-    DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Failed to read gain\n");
-	if ((100*((float)gain-minGain))/(maxGain-minGain) > (camConfig->nightThreshold)) night += 1;
-//	printf ("gain: %f, threshold: %d, night: %d\n", (100*((float)gain-minGain))/(maxGain-minGain), camConfig->nightThreshold, night);
+	/* capture one frame */
+	err=dc1394_capture_dequeue(camConfig->cam, DC1394_CAPTURE_POLICY_WAIT, &frame);
+	DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camConfig->cam),"Could not capture a frame\n");
+	
+	/* get current gain to use for night-time auto shutdown */
+	err=dc1394_feature_get_value(camConfig->cam, DC1394_FEATURE_GAIN, &gain);
+	DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camConfig->cam),"Failed to read gain\n");
+	if ((100*((float)gain - camConfig->minGain))/(camConfig->maxGain - camConfig->minGain) > (camConfig->nightThreshold)) night += 1;
 
 	/* save raw binary data if requested */
 	if(camConfig->raw){
 		sprintf(full_file_name, "%s.raw", image_file_name);
-	    imagefile=fopen(full_file_name, "wb");
-	    if( imagefile == NULL) {
-	        perror( "Can't create ' image_file_name '");
-	        cleanup_and_exit(camera);
-	    }
+		imagefile=fopen(full_file_name, "wb");
+		if( imagefile == NULL) {
+			perror( "Can't create ' image_file_name '");
+			cleanup_and_exit(camConfig->cam);
+		}
 		fwrite((const char *)frame->image, 1, frame->total_bytes, imagefile);
-	    fclose(imagefile);
-//    	printf("wrote: %s\n", full_file_name);
-		stat(full_file_name, &st);
-		totalSize += st.st_size;
+		fclose(imagefile);
+//		printf("wrote: %s\n", full_file_name);
+		if (!stat(full_file_name, &st)) totalSize += st.st_size;
 	}
 
-    /* debayer the image for all other formats*/
+	/* debayer the image for all other formats*/
 	dc1394video_frame_t *new_frame;
    	new_frame=calloc(1,sizeof(dc1394video_frame_t));
 	dc1394_debayer_frames(frame, new_frame, DC1394_BAYER_METHOD_BILINEAR);
@@ -123,19 +145,18 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 	/* save image as uncompressed .ppm image, if requested */
 	if(camConfig->ppm){	
 		sprintf(full_file_name, "%s.ppm", image_file_name);
-	    imagefile=fopen(full_file_name, "wb");
-	    if( imagefile == NULL) {
-	        perror( "Can't create ' image_file_name '");
-	        cleanup_and_exit(camera);
-	    }
+		imagefile=fopen(full_file_name, "wb");
+		if( imagefile == NULL) {
+			perror( "Can't create ' image_file_name '");
+			cleanup_and_exit(camConfig->cam);
+		}
 	
-	    fprintf(imagefile,"P6\n%u %u\n", new_frame->size[0], new_frame->size[1]);
-	    fprintf(imagefile,"%ld\n", (long)((1<<new_frame->data_depth) - 1));
+		fprintf(imagefile,"P6\n%u %u\n", new_frame->size[0], new_frame->size[1]);
+		fprintf(imagefile,"%ld\n", (long)((1<<new_frame->data_depth) - 1));
 		fwrite((const char *)new_frame->image, 1, new_frame->total_bytes, imagefile);
-	    fclose(imagefile);
-//    	printf("wrote: %s\n", full_file_name);
-		stat(full_file_name, &st);
-		totalSize += st.st_size;
+		fclose(imagefile);
+//		printf("wrote: %s\n", full_file_name);
+		if (!stat(full_file_name, &st)) totalSize += st.st_size;
 	}
 
 	/* compress and save image as .jpg image, if requested */	
@@ -157,10 +178,9 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 			write_JPEG_file(full_file_name, camConfig->quality, 
 						new_frame->size[1], new_frame->size[0], new_frame->image);
 		}
-		addXMP(full_file_name, camConfig, camera);
+		addXMP(full_file_name, camConfig, camConfig->cam);
 //  		printf("wrote: %s, at %d%% quality\n", full_file_name, camConfig->quality);
-		stat(full_file_name, &st);
-		totalSize += st.st_size;
+		if (!stat(full_file_name, &st)) totalSize += st.st_size;
 	}
 
 	/* compress and save the image as a .png image, if requested */
@@ -174,18 +194,17 @@ libexiv2 in that is available in the epel repos at this time - it does work with
 the latest (svn) verison of libexiv2 */
 //		addXMP(full_file_name, camConfig, camera); 
 //  		printf("wrote: %s\n", full_file_name);
-		stat(full_file_name, &st);
-		totalSize += st.st_size;
+		if (!stat(full_file_name, &st)) totalSize += st.st_size;
 	}
 
 	/* clean up and return */
+	if (frame)
+		dc1394_capture_enqueue (camConfig->cam, frame);
+
 	free(new_frame->image);
 	free(new_frame);
-    dc1394_video_set_transmission(camera, DC1394_OFF);
-    dc1394_capture_stop(camera);
-    dc1394_camera_free(camera);
 
-    return totalSize;
+	return totalSize;
 }
 
 void printCamConf(camConf_t *camArray) {

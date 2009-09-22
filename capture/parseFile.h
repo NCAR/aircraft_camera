@@ -1,6 +1,15 @@
 #ifndef PARSEFILE_H
 #define PARSEFILE_H
 
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include <syslog.h>
+#include <dc1394/dc1394.h>
+#include <inttypes.h>
+#include <ctype.h> //for tolower
+
 /*struct to hold information from config file*/
 typedef struct {
 	long long guid;			//64-bit GUID of the camera
@@ -18,6 +27,9 @@ typedef struct {
 	char ppm;				//option for uncompressed PPM output
 	int quality; 			//if format is 'jpg', specify the compression quality
 	char flNum[10];			//number of the flight on which the image was taken
+	dc1394camera_t *cam;
+	unsigned minGain;
+	unsigned maxGain;
 } camConf_t;
 
 char *strLower(char* s);
