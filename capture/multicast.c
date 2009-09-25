@@ -2,7 +2,6 @@
 
 #define MULTICAST_PORT 30001
 #define MULTICAST_GROUP "239.0.0.10"
-//#define MULTICAST_GROUP "127.0.0.1"
 
 void multicast_status_init(status_t *status, camConf_t **camArray, int numCams) {
 /* This function allocates memory for all of the data contained in the status 
@@ -90,7 +89,7 @@ int multicast_send_status(status_t *status) {
 
 	/* write data specific to each cam into a row, add to to "rows" string */
 	for (i=0; i<status->numCams; i++) {
-		sprintf(row, "<tr>%s<td>%s</td><td>%d B</td><td>%f B</td><tr>", status->cam_row[i], 
+		sprintf(row, "<tr>%s<td>%s</td><td>%d B</td><td>%f B</td></tr>", status->cam_row[i], 
 			status->latest[i], status->lastSize[i], status->runningAvg[i]);
 		strcat(rows, row);
 	}
@@ -115,8 +114,7 @@ int multicast_send_status(status_t *status) {
 	}
 
 	/* build final packet to be sent via multicast */
-    sprintf(packet, PACKET_BASE, status->clock, status->health, status->html);
-    //printf("packet: %s\n\n", packet);
+	sprintf(packet, PACKET_BASE, status->clock, status->health, status->html);
 
 	/* open socket and send the packet */
 	multicast_send_packet(packet, MULTICAST_GROUP, MULTICAST_PORT);

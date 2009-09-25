@@ -27,16 +27,13 @@ typedef struct {
 	char ppm;				//option for uncompressed PPM output
 	int quality; 			//if format is 'jpg', specify the compression quality
 	char flNum[10];			//number of the flight on which the image was taken
-	dc1394camera_t *cam;
-	unsigned minGain;
-	unsigned maxGain;
+	int minGain, maxGain;	//min/max gain values used to calculate percentage
 } camConf_t;
 
 char *strLower(char* s);
 int getConf(const char *filename, long long guid, camConf_t *camConf);
 void fillConf(camConf_t *camConf, char* param, char* value);
 int decoment (char* s);
-int setFP(const char *filename, long long guid, camConf_t *camConf);
 void applyDefaults(camConf_t *camConf);
 
 

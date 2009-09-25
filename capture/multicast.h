@@ -16,7 +16,7 @@
 
 #define TABLE_BASE "\
 <table>\
-<thead><tr><td>Direction</td><td>GUID</td><td>Last Image</td><td>Size</td><td>Average</td></tr></thead>\
+<thead><tr><th>Direction</th><th>GUID</th><th>Last Image</th><th>Size</th><th>Average</th></tr></thead>\
 <tbody>\
 %s\
 </tbody>\

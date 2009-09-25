@@ -92,50 +92,50 @@ void fillConf(camConf_t *camConf, char* param, char* value){
 //	printf("%s = %s\n", param, value);
 
 	if (!strcmp(param, "iso")){
-        if(!strcmp(strLower(value), "100"))
-	        camConf->iso = DC1394_ISO_SPEED_100;
-        else if(!strcmp(strLower(value), "200"))
-	        camConf->iso = DC1394_ISO_SPEED_200; 
-        else if(!strcmp(strLower(value), "400"))
-	        camConf->iso = DC1394_ISO_SPEED_400;
-        else if(!strcmp(strLower(value), "800"))
-	        camConf->iso = DC1394_ISO_SPEED_800;
-        else if(!strcmp(strLower(value), "1600"))
-	        camConf->iso = DC1394_ISO_SPEED_1600;
-        else if(!strcmp(strLower(value), "3200"))
-	        camConf->iso = DC1394_ISO_SPEED_3200;
+		if(!strcmp(strLower(value), "100"))
+			camConf->iso = DC1394_ISO_SPEED_100;
+		else if(!strcmp(strLower(value), "200"))
+			camConf->iso = DC1394_ISO_SPEED_200; 
+		else if(!strcmp(strLower(value), "400"))
+			camConf->iso = DC1394_ISO_SPEED_400;
+		else if(!strcmp(strLower(value), "800"))
+			camConf->iso = DC1394_ISO_SPEED_800;
+		else if(!strcmp(strLower(value), "1600"))
+			camConf->iso = DC1394_ISO_SPEED_1600;
+		else if(!strcmp(strLower(value), "3200"))
+			camConf->iso = DC1394_ISO_SPEED_3200;
 	}else if (!strcmp(param, "mode")){
 		if(!strcmp(value, "format7_mode0"))
 			camConf->mode = DC1394_VIDEO_MODE_FORMAT7_0;
 		/* add more options? */
 	}else if (!strcmp(param, "coding")){
-        if(!strcmp(strLower(value), "raw8"))
-	        camConf->coding = DC1394_COLOR_CODING_RAW8;
-        else if(!strcmp(strLower(value), "raw16"))
-	        camConf->coding = DC1394_COLOR_CODING_RAW16;
-        else if(!strcmp(strLower(value), "mono8"))
-            camConf->coding = DC1394_COLOR_CODING_MONO8;
-        else if(!strcmp(strLower(value), "mono16"))
-            camConf->coding = DC1394_COLOR_CODING_MONO16;
+		if(!strcmp(strLower(value), "raw8"))
+			camConf->coding = DC1394_COLOR_CODING_RAW8;
+		else if(!strcmp(strLower(value), "raw16"))
+			camConf->coding = DC1394_COLOR_CODING_RAW16;
+		else if(!strcmp(strLower(value), "mono8"))
+			camConf->coding = DC1394_COLOR_CODING_MONO8;
+		else if(!strcmp(strLower(value), "mono16"))
+			camConf->coding = DC1394_COLOR_CODING_MONO16;
 	}else if (!strcmp(param, "direction")){
 		strcpy(camConf->direction, value);
 	}else if (!strcmp(param, "bayermethod")){
-        if(!strcmp(strLower(value), "nearest"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_NEAREST;
-        else if(!strcmp(strLower(value), "simple"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_SIMPLE;
-        else if(!strcmp(strLower(value), "bilinear"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_BILINEAR;
-        else if(!strcmp(strLower(value), "hqlinear"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_HQLINEAR;
-        else if(!strcmp(strLower(value), "downsample"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_DOWNSAMPLE;
-        else if(!strcmp(strLower(value), "edgesense"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_EDGESENSE;
-        else if(!strcmp(strLower(value), "vng"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_VNG;
-        else if(!strcmp(strLower(value), "ahd"))
-	        camConf->bayerMethod = DC1394_BAYER_METHOD_AHD;
+		if(!strcmp(strLower(value), "nearest"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_NEAREST;
+		else if(!strcmp(strLower(value), "simple"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_SIMPLE;
+		else if(!strcmp(strLower(value), "bilinear"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_BILINEAR;
+		else if(!strcmp(strLower(value), "hqlinear"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_HQLINEAR;
+		else if(!strcmp(strLower(value), "downsample"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_DOWNSAMPLE;
+		else if(!strcmp(strLower(value), "edgesense"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_EDGESENSE;
+		else if(!strcmp(strLower(value), "vng"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_VNG;
+		else if(!strcmp(strLower(value), "ahd"))
+			camConf->bayerMethod = DC1394_BAYER_METHOD_AHD;
 	}else if (!strcmp(param, "png")){
 		if (value[0] == 'y') camConf->png = 1;
 		else camConf->png = 0;

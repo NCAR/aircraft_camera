@@ -1,9 +1,9 @@
 Summary: ieee1394 camera image capture/archive program
 Name: capture-camserver
-Version: 0.5
+Version: 0.6
 Release: 1
 Group: Applications/Text
-Source: capture-camserver-0.5.tar.bz2
+Source: %{name}-%{version}.tar.bz2
 License: none
 URL: http://svn/svn/raf/trunk/instruments/camera
 Distribution: RHEL 5.3 Linux
@@ -17,7 +17,7 @@ This program finds any cameras on the Firewire (ieee1394) bus and attempts to ca
 The program attempts to capture images once per second, the only notable exception to this occurs when png output is enabled. The png comression takes too long and the once/second deadline is not met.
 
 %prep
-%setup
+%setup -n capture-camserver
 
 %build
 make
@@ -38,15 +38,21 @@ cp capture_reset_bus $RPM_BUILD_ROOT/usr/sbin/
 cp capture_monitor.sh $RPM_BUILD_ROOT/usr/sbin/
 cp capture.sh $RPM_BUILD_ROOT/etc/init.d/capture
 cp capture.php $RPM_BUILD_ROOT/var/www/html/camera/
-ln -s $RPM_BUILD_ROOT/etc/init.d/capture $RPM_BUILD_ROOT/etc/rc.d/rc3.d/K99capture
 
 %post
 chkconfig httpd on
+
+ln -s /etc/init.d/capture /etc/rc.d/rc3.d/K99capture
+
 echo "/mnt/cam	/etc/local/capture.map nolock,nosuid,nodev,rsize=32768,wsize=32768,intr" >> /etc/auto.master
+mkdir /etc/local
 echo "camera_images	acserver.raf.ucar.edu:/mnt/r1/camera_images" >> /etc/local/capture.map
 
 echo "#firewire cameras " >> /etc/udev/rules.d/50-udev.rules
 echo "SUBSYSTEM==\"firewire\", OWNER=\"ads\", GROUP=\"ads\", MODE=\"0666\" " >> /etc/udev/rules.d/50-udev.rules
+
+%postun 
+rm /etc/rc.d/rc3.d/K99capture
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -58,7 +64,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %doc %{_mandir}/man1/capture.1.gz
 %attr(644,root,root) %doc %{_mandir}/man5/capture.5.gz
 %attr(0774,ads,apache) /etc/init.d/capture
-/etc/rc.d/rc3.d/K99capture
 %attr(0664,ads,apache) /var/www/html/camera/capture.php
 %attr(0774,ads,apache) /usr/sbin/capture_monitor.sh
 %attr(0774,ads,apache) /usr/sbin/capture_reset_bus

@@ -12,5 +12,6 @@ void cleanUpDB(PGconn*, int);
 int initPostgres(PGconn*, camConf_t**, int);
 int updatePostgres(PGconn*, const char*, int); 
 int getDbFlNum(PGconn*, char**);
+char *trimWhiteSpace(char*);
 
 #endif

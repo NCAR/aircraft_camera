@@ -14,7 +14,7 @@
 
 	$capture = "/etc/init.d/capture";
 
-    if(isset($_GET["start"])) {
+	if(isset($_GET["start"])) {
 		shell_exec("$capture start > /dev/null &");
 	}
 	else if(isset($_GET["stop"])) {

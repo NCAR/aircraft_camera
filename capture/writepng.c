@@ -11,6 +11,7 @@
  
 #define PNG_DEBUG 3
 #include <png.h>
+
  
 int write_PNG_file (const char *filename, int bit_depth, int image_height, int image_width, unsigned char *image_buffer )
 {
@@ -46,8 +47,8 @@ int write_PNG_file (const char *filename, int bit_depth, int image_height, int i
 	/* set png compressor settings */
 	png_init_io(png_ptr, fp);
 	png_set_IHDR(png_ptr, info_ptr, image_width, image_height,
-	       bit_depth, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-	       PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+		bit_depth, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+		PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 	
 	/* Fastest compression possible = 1, set to 0 for no compression */
 	png_set_compression_level(png_ptr, 1);

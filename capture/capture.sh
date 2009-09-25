@@ -3,13 +3,12 @@
 #This is the initscript for the capture program
 
 #set these vars correctly for your setup
-dbHOST=acserver                   # real-time postgres db hostname
-capture=/usr/bin/capture          # path to capture program
-pidfile=/var/run/capture/capture.pid      # path to pid file
+dbHOST=acserver                              # real-time postgres db hostname
+capture=/usr/bin/capture                     # path to capture program
+pidfile=/var/run/capture/capture.pid	     # path to pid file
 LOC='/mnt/cam/camera_images/flight_number_'  #location where images will be stored (should be on webserver)
-CONF='/etc/capture.conf'          #location of camera configuration file
+CONF='/etc/capture.conf'		             #location of camera configuration file
 monitor_script='/usr/sbin/capture_monitor.sh'
-logfile='/home/ads/capture.log'
 
 start() {
 
@@ -17,7 +16,7 @@ start() {
 	if [ ! -s "$pidfile" ]
 	then
 		#start capture program
-		($capture -c $CONF -f $LOC -d $dbHOST &> $logfile) &
+		( $capture -c $CONF -f $LOC -d $dbHOST ) &
 
 		#store pid for stop script
 		cap_pid=$!
@@ -25,11 +24,11 @@ start() {
 		echo $cap_pid > $pidfile
 		echo started cams
 
-	        #launch a monitor script, unless start was called by an already running monitor
-	        if [ "$1" = "launch" ]; then
-        	    $monitor_script & 
-		    echo "started monitor"
-	        fi
+			#launch a monitor script, unless start was called by an already running monitor
+			if [ "$1" = "launch" ]; then
+				$monitor_script & 
+			echo "started monitor"
+			fi
 
 		return $retval
 	else

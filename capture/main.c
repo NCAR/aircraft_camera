@@ -20,6 +20,9 @@
 #include "pgFuncs.h"
 #include "multicast.h"
 
+#define MAX_NIGHT_TRIP 5
+#define MAX_NIGHT_VAL MAX_NIGHT_TRIP * 10
+
 /* default settings - if not specified by user */
 #define CONFIG_FILE "/etc/capture.conf"
 #define FILE_PREFIX "./flight_number_"
@@ -29,8 +32,7 @@ void finishUp();
 void getTime(char *, char *);
 void parseInputLine(int, char **, char**, char**, char**, char**, int*);
 char *defaults(char **arg, char *value);
-void printArgsError();
-char *trimWhiteSpace(char*);
+void printArgsError(char *);
 
 /* global variable for interrupt handling */
 int keepGoing = 1;
@@ -110,21 +112,21 @@ int main(int argc, char *argv[])
 	multicast_status_init(&statMC, camArray, list->num);
 
 	/* create image directory structure */
-	sprintf(directory, "mkdir -m 777 %s%s &> /dev/null",prefix, flNum); 
+	sprintf(directory, "mkdir -p -m 777 %s%s &> /dev/null",prefix, flNum); 
 	system(directory);
 	for (i=0; i<list->num; i++){
-		sprintf(directory, "mkdir -m 777 %s%s/%s &> /dev/null", prefix, 
+		sprintf(directory, "mkdir -p -m 777 %s%s/%s &> /dev/null", prefix, 
 				flNum, camArray[i]->direction); 
 		system(directory);
 	}
 
-	/* apply settings to cameras, allocate DMA memory */
-	statMC.health = initCams(d, camArray, list->num);
+	/* assume progam is healthy at start */
+	statMC.health = setup_cams(camArray, list->num, d);
 
 	/*				 %=== MAIN LOOP HERE ===% 
 	 * keep getting pictures until SIGINT signal or night detection 
 	 */
-	while(keepGoing && night<10){
+	while(keepGoing && night<MAX_NIGHT_VAL){
 
 		/* spawn child (timer) process to wait one second, then die */
 		if( !(cpid = fork()) ) {
@@ -146,6 +148,8 @@ int main(int argc, char *argv[])
 			/* Update database if connected */
 			if(useDB) updatePostgres(conn, timeStr, i);
 		}
+		/* slowly bring night back to 0, to help avoid false triggers */
+		if(night>0) night--;
 
 		/* send multicast status packet */
 		multicast_send_status(&statMC);
@@ -155,11 +159,12 @@ int main(int argc, char *argv[])
 	}
 
 	/* log the reason for stopping the program */
-	if (night>10) syslog(LOG_NOTICE, "night detected, shutting down");
+	if (night>=MAX_NIGHT_VAL) syslog(LOG_NOTICE, "night detected, shutting down");
 	else syslog(LOG_NOTICE, "sigint signal captured, shutting down");
 
 	/* clean up memory and exit */
-	cleanup_cams(camArray, list->num);	//release DMA memory, and conf structs
+	for (i=0; i<list->num; i++) free(camArray[i]);
+
 	free(camArray);						//release array of pointers
 	dc1394_camera_free_list (list);		//release camera list struct
 	if(useDB) cleanUpDB(conn, night);	//update DB and close connection
@@ -199,7 +204,7 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 	int i=0;
 	char opt; 
 	if (argc <= 1) {
-		printArgsError();
+		printArgsError(argv[0]);
 	}
 
 	/* set to NULL, so we can apply defaults if needed later */
@@ -222,14 +227,14 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 					*getFNfromDB = 1;
 					break;
 				default:
-					printArgsError();
+					printArgsError(argv[0]);
 			}
 		} else if (i>0) *flNum = argv[i];
 		i++;
 	}
 	
 	/* if the params were not set, use the default vals */
-	if (*flNum == NULL && !(*getFNfromDB)) printArgsError();
+	if (*flNum == NULL && !(*getFNfromDB)) printArgsError(argv[0]);
 	if (*confFile == NULL) defaults(confFile, CONFIG_FILE);
 	if (*filePrefix == NULL) defaults(filePrefix, FILE_PREFIX);
 	if (*dbHost == NULL) defaults(dbHost, DB_HOST);
@@ -244,32 +249,13 @@ char *defaults(char **arg, char *value){
 	return *arg;
 }
 
-void printArgsError(){
+void printArgsError(char *cmd){
 	/* this function is called when there is impropper input on the
 	   command line. It displays some help for the user and _exits */
 	printf("improper usage - use format:\n");
-	printf("capture [-c <configFile>] [-f <file prefix>] [-d <db host>] <flightnumber>\n");
+	printf("%s [-c <configFile>] [-f <file prefix>] [-d <db host>] <flightnumber>\n", cmd);
 	printf("\tNOTE: you must specify a flight number or use -d to get from database\n\n");
 	exit(1);
 
-}
-char *trimWhiteSpace(char *input) {
-	/* this function sets the end of a string at the first instance of two spaces
-	   it is useful for trimming whitespace at the end of a string:
-		i.e 'hello Tom \n and Jerry' => 'hello Tom'
-			'rf09	   '	 => 'rf09' 
-	*/
-
-	int i=0;
-	char c, d;
-	while (c = input[i]){
-		if ((c == ' ' || c == '\n') && (d == ' ' || d == '\n')){
-			input[i-1] = '\0';
-			return input;
-		}
-		d = c;
-		i++;
-	}
-	return input;
 }
 

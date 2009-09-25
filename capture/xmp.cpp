@@ -14,7 +14,7 @@ extern "C" int addXMP(const char *fileName, camConf_t *camConf, dc1394camera_t *
 /* Writes out all the relivant data to XMP image metadata */
 
 try {
-    std::string file(fileName);
+	std::string file(fileName);
 	char guid_s[17];
 	sprintf(guid_s, "%llx", camConf->guid);
 	
@@ -65,8 +65,8 @@ try {
 		"DC1394_BAYER_METHOD_AHD" };
 
 	/* Fill in XMP structure */
-    Exiv2::XmpData xmpData;
-    xmpData["Xmp.dc.make"] = camera->vendor; 
+	Exiv2::XmpData xmpData;
+	xmpData["Xmp.dc.make"] = camera->vendor; 
 	xmpData["Xmp.dc.model"] = camera->model;   
 	xmpData["Xmp.dc.guid"]  = guid_s;   
 	xmpData["Xmp.dc.direction"]  = camConf->direction; 
@@ -74,24 +74,24 @@ try {
 	xmpData["Xmp.dc.flight_number"]  = camConf->flNum;
 	xmpData["Xmp.dc.iso"]  = 100*(1<<(camConf->iso));   
 	xmpData["Xmp.dc.bayer_method"]  = dc_debayer_array[camConf->bayerMethod]; 
-	xmpData["Xmp.dc.quality"]  = camConf->quality;    
-	xmpData["Xmp.dc.whiteBal_blue"]  = camConf->whiteBalance_blue;    
-	xmpData["Xmp.dc.whiteBal_red"]  = camConf->whiteBalance_red;    
+	xmpData["Xmp.dc.quality"]  = camConf->quality;	
+	xmpData["Xmp.dc.whiteBal_blue"]  = camConf->whiteBalance_blue;	
+	xmpData["Xmp.dc.whiteBal_red"]  = camConf->whiteBalance_red;	
 	xmpData["Xmp.dc.UTC_timestamp"]  = file.substr(file.length()-17, 13);
 
-    /* open the image file for writing */
-    Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(file);
-    assert(image.get() != 0);
+	/* open the image file for writing */
+	Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(file);
+	assert(image.get() != 0);
 
-    /* Write all the data to the image file */
-    image->setXmpData(xmpData);
-    image->writeMetadata();
+	/* Write all the data to the image file */
+	image->setXmpData(xmpData);
+	image->writeMetadata();
 
-    return 0;
+	return 0;
 }
 catch (Exiv2::AnyError& e) {
-//    std::cout << "Caught Exiv2 exception '" << e << "'\n";
-    syslog(LOG_ERR, "Caught Exiv2 exception '%s'", e.what());
-    return -1;
+//	std::cout << "Caught Exiv2 exception '" << e << "'\n";
+	syslog(LOG_ERR, "Caught Exiv2 exception '%s'", e.what());
+	return -1;
 }
 
