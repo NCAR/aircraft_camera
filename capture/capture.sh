@@ -46,7 +46,7 @@ start() {
 
 stop() {
 	cap_pid=`cat $pidfile`
-	junk=`kill -s INT $cap_pid`  #send ctrl-c signal to allow program to clean up
+	junk=`kill -s HUP $cap_pid`  #send ctrl-c signal to allow program to clean up
 	RETVAL=$?
 	
 	cat /dev/null > $pidfile #clear pid file

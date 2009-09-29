@@ -13,7 +13,7 @@ void cleanup_and_exit(dc1394camera_t *camera){
 	dc1394_video_set_transmission(camera, DC1394_OFF);
 	dc1394_capture_stop(camera);
 	dc1394_camera_free(camera);
-	exit(1);
+//	exit(1);
 }
 
 int setup_cams(camConf_t **camArray, int nCams, dc1394_t *d){
@@ -85,7 +85,8 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 	}
 //	printf("initialized camera GUID %"PRIx64"\n", camera->guid);
 
-	err=dc1394_capture_setup(camera,4, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
+//	err=dc1394_capture_setup(camera,4, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
+	err=dc1394_capture_setup(camera,1, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
 	DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not setup camera-\n \
 			make sure that the video mode and framerate are\n \
 			supported by your camera\n");
@@ -96,10 +97,8 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 		"Could not start camera iso transmission\n");
 
 	/* capture one frame */
-//	printf("requesting image\n");
 	err=dc1394_capture_dequeue(camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
 	DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not capture a frame\n");
-//	printf("image recieved\n");
 	
 	/* stop data transmission */
 	err=dc1394_video_set_transmission(camera,DC1394_OFF);

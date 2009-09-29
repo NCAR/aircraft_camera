@@ -46,10 +46,14 @@ ln -s /etc/init.d/capture /etc/rc.d/rc3.d/K99capture
 
 echo "/mnt/cam	/etc/local/capture.map nolock,nosuid,nodev,rsize=32768,wsize=32768,intr" >> /etc/auto.master
 mkdir /etc/local
-echo "camera_images	acserver.raf.ucar.edu:/mnt/r1/camera_images" >> /etc/local/capture.map
+echo "camera_images	acserver.raf.ucar.edu:/mnt/r2/camera_images" >> /etc/local/capture.map
 
 echo "#firewire cameras " >> /etc/udev/rules.d/50-udev.rules
 echo "SUBSYSTEM==\"firewire\", OWNER=\"ads\", GROUP=\"ads\", MODE=\"0666\" " >> /etc/udev/rules.d/50-udev.rules
+
+echo "#send kernel notice and local1 to acserver for firewire cameras" >> /etc/syslog.conf
+echo "kern.notice					@acserver" >> /etc/syslog.conf
+echo "local1.*						@acserver" >> /etc/syslog.conf
 
 %postun 
 rm /etc/rc.d/rc3.d/K99capture

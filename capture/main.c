@@ -23,11 +23,16 @@
 #define MAX_NIGHT_TRIP 5
 #define MAX_NIGHT_VAL MAX_NIGHT_TRIP * 10
 
+#define RESCAN_BUS_INTERVAL 10
+
 /* default settings - if not specified by user */
 #define CONFIG_FILE "/etc/capture.conf"
 #define FILE_PREFIX "./flight_number_"
 #define DB_HOST "acserver"
 
+int bus_count_changed(dc1394_t *d, int numCams);
+int cleanup_d(camConf_t ***, int, status_t *);
+int reinitialize_d(char *, dc1394_t *, camConf_t ***, status_t *, int *, PGconn *, char *, char *);
 void finishUp();
 void getTime(char *, char *);
 void parseInputLine(int, char **, char**, char**, char**, char**, int*);
@@ -40,54 +45,27 @@ int keepGoing = 1;
 int main(int argc, char *argv[])
 {
 	/* declare vars */
-	int i, useDB = 1, getFNfromDB = 0, night=0;
-	char directory[100], timeStr[20];
-
+	int i, useDB = 1, getFNfromDB = 0, night=0, camCount=0, rescanCount=0;
+	char timeStr[20];
 	status_t statMC;				//struct to hold cumulative status data
-	camConf_t **camArray;			//array to hold settings from conf file
+	camConf_t **camArray = NULL;	//array to hold settings from conf file
 	PGconn *conn; 					//postgresql database connection
 	pid_t cpid;						//PID for timing process
 	dc1394_t * d;					//dc1394 base class (for scanning the bus)
-	dc1394camera_t * resCam;		//dc1394 camera class, used here for reset
-	dc1394camera_list_t * list; 	//dc1394 struct to hold list of cams on bus
-	dc1394error_t err;				//dc1394 struct to hold err message,status
-	
 	char *conf, *prefix, *dbHost, *flNum;	//ptrs for command line arguements
 
-	/* set up handler for SIGINT (ctrl-c) signal */
+	/* set up handler for signal */
 	signal(SIGINT, &finishUp);
+	signal(SIGTERM, &finishUp);
+	signal(SIGHUP, &finishUp);
 
 	/* set up syslog */
 	setlogmask(LOG_UPTO(LOG_DEBUG));
 	openlog("capture:", LOG_CONS | LOG_PID, LOG_LOCAL1);
 
+
 	/* get input args */
 	parseInputLine(argc, argv, &conf, &prefix, &dbHost, &flNum, &getFNfromDB);
-
-	/* set up libdc1394 object */		
-	d = dc1394_new ();
-	if (!d) return 1;
-	err=dc1394_camera_enumerate (d, &list);
-	DC1394_ERR_RTN(err,"Failed to enumerate cameras");
-
-	/* check to make sure there is at least one camera on the bus */
-	if (list->num == 0) {
-		dc1394_log_error("No cameras found");
-		return 1;
-	}
-
-	/* relase old bandwith allocations (if prev. proc. did not end nicely) */
-	resCam = dc1394_camera_new (d, list->ids[0].guid);
-	if (!resCam) {
-		dc1394_log_error("Failed to initialize first camera [with guid %llx]",
-						 list->ids[0].guid);
-		return 1;
-	}
-	dc1394_iso_release_all(resCam);
-	dc1394_camera_free(resCam); 
-
-	/* allocate memory for struct pointers for each cam */
-	camArray = malloc(sizeof(camConf_t*)*list->num); 
 
 	/* connect to postgres db */
 	useDB = connectDB(&conn, dbHost, getFNfromDB);
@@ -95,36 +73,15 @@ int main(int argc, char *argv[])
 	/* if not specifed on command line, get flight number from db */
 	if(getFNfromDB) getDbFlNum(conn, &flNum);
 
-	/* allocate and fill structs with data from config file */
-	for (i=0; i<list->num; i++){
-		camArray[i] = malloc(sizeof(camConf_t)); //allocate config structures
-		if (!getConf(conf, list->ids[i].guid, camArray[i])){
-			syslog(LOG_WARNING,"no settings for camera: %llx in file: %s,using defaults.",
-					list->ids[i].guid, conf);
-		}
-		strcpy(camArray[i]->flNum, flNum);
-	}
+	/* set up libdc1394 object */		
+	if ( !(d=dc1394_new()) ) return 1;
 
-	/* set up camera table in postgres db, if connected */
-	if(useDB) initPostgres(conn, camArray, list->num);
+	/* allocate/set up camArray */
+	camCount = reinitialize_d(flNum, d, &camArray, &statMC, &useDB, conn, conf, prefix);
 
-	/* allocate and setup multicast status struct */
-	multicast_status_init(&statMC, camArray, list->num);
-
-	/* create image directory structure */
-	sprintf(directory, "mkdir -p -m 777 %s%s &> /dev/null",prefix, flNum); 
-	system(directory);
-	for (i=0; i<list->num; i++){
-		sprintf(directory, "mkdir -p -m 777 %s%s/%s &> /dev/null", prefix, 
-				flNum, camArray[i]->direction); 
-		system(directory);
-	}
-
-	/* assume progam is healthy at start */
-	statMC.health = setup_cams(camArray, list->num, d);
 
 	/*				 %=== MAIN LOOP HERE ===% 
-	 * keep getting pictures until SIGINT signal or night detection 
+	 * keep getting pictures until signal or night detection 
 	 */
 	while(keepGoing && night<MAX_NIGHT_VAL){
 
@@ -136,8 +93,7 @@ int main(int argc, char *argv[])
 
 		/* main process continues here*/
 		getTime(timeStr, statMC.clock);
-
-		for (i=0; i<list->num; i++){
+		for (i=0; i<camCount; i++){
 			/* produce file name */
 			sprintf(statMC.latest[i], "%s%s/%s/%s", prefix, flNum,
 					camArray[i]->direction, timeStr); 
@@ -151,6 +107,17 @@ int main(int argc, char *argv[])
 		/* slowly bring night back to 0, to help avoid false triggers */
 		if(night>0) night--;
 
+		/* cleanup and reinit if there are new cams on the bus */
+		if ( rescanCount++ >= RESCAN_BUS_INTERVAL ) {
+			rescanCount = 0;
+			if (bus_count_changed(d, camCount)) {
+				syslog(LOG_WARNING, "warning: bus count changed, reinitializing\n");
+				cleanup_d(&camArray, camCount, &statMC);
+				camCount = reinitialize_d(flNum, d, &camArray, 
+					&statMC, &useDB, conn, conf, prefix);
+			}
+		}
+
 		/* send multicast status packet */
 		multicast_send_status(&statMC);
 
@@ -160,21 +127,100 @@ int main(int argc, char *argv[])
 
 	/* log the reason for stopping the program */
 	if (night>=MAX_NIGHT_VAL) syslog(LOG_NOTICE, "night detected, shutting down");
-	else syslog(LOG_NOTICE, "sigint signal captured, shutting down");
+	else syslog(LOG_NOTICE, "signal captured, shutting down");
 
 	/* clean up memory and exit */
-	for (i=0; i<list->num; i++) free(camArray[i]);
-
-	free(camArray);						//release array of pointers
-	dc1394_camera_free_list (list);		//release camera list struct
+	cleanup_d(&camArray, camCount, &statMC);
 	if(useDB) cleanUpDB(conn, night);	//update DB and close connection
-	multicast_clean_up(&statMC);		//send final packet and release structs
+	dc1394_free(d);
 
 	return 0;
 }
 
+
+int bus_count_changed(dc1394_t *d, int numCams) {
+	
+	int n;
+	dc1394error_t err;	
+	dc1394camera_list_t * list; 
+	
+	err=dc1394_camera_enumerate (d, &list);
+	DC1394_ERR_RTN(err,"Failed to enumerate cameras");
+
+	n=list->num;
+	dc1394_camera_free_list(list);		//release camera list struct
+	if (n != numCams) return 1;
+	else return 0;
+
+}
+
+int cleanup_d(camConf_t ***camArray_ptr, int camCount, status_t *statMC) {
+
+	camConf_t **camArray = *camArray_ptr;
+	int i;
+	for (i=0; i<camCount; i++) free(camArray[i]);
+
+	free(camArray);					//release array of pointers
+	multicast_clean_up(statMC);		//send final packet and release structs
+
+}
+
+int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t *statMC, int *useDB, PGconn *conn, char *conf, char *prefix) {
+
+	int numCams=0, i;
+	char directory[100];
+	camConf_t **camArray;
+	//dc1394camera_t * resCam;		//dc1394 camera class, used here for reset
+	dc1394camera_list_t * list; 	//dc1394 struct to hold list of cams on bus
+	dc1394error_t err;				//dc1394 struct to hold err message,status
+
+	err=dc1394_camera_enumerate (d, &list);
+	DC1394_ERR_RTN(err,"Failed to enumerate cameras");
+
+	/* check to make sure there is at least one camera on the bus */
+	numCams = list->num;
+	if (numCams == 0) {
+		printf("No cameras found\n");
+		syslog(LOG_ERR, "No cameras found, exiting");
+		exit(1);
+	}
+
+	/* allocate memory for struct pointers for each cam */
+	camArray = malloc(sizeof(camConf_t*) * numCams); 
+	*camArray_ptr = camArray;
+
+	/* allocate and fill structs with data from config file */
+	for (i=0; i<numCams; i++){
+		camArray[i] = malloc(sizeof(camConf_t)); //allocate config structures
+		if (!getConf(conf, list->ids[i].guid, camArray[i])){
+			syslog(LOG_WARNING,"no settings for camera: %llx in file: %s,using defaults.",
+				list->ids[i].guid, conf);
+		}
+		strcpy(camArray[i]->flNum, flNum);
+	}
+
+	/* create image directory structure */
+	for (i=0; i<numCams; i++){
+		sprintf(directory, "mkdir -p -m 777 %s%s/%s &> /dev/null", prefix, 
+				flNum, camArray[i]->direction); 
+		system(directory);
+	}
+
+	/* set up camera table in postgres db, if connected */
+	if(*useDB != 0) initPostgres(conn, camArray, numCams);
+
+	/* allocate and setup multicast status struct */
+	multicast_status_init(statMC, camArray, numCams);
+
+	/* apply config params to cameras, ensure valid connection */
+	statMC->health = setup_cams(camArray, numCams, d);
+
+	dc1394_camera_free_list(list);		//release camera list struct
+	return numCams;
+}
+
 void finishUp(){
-/* This function will be set as the SIGINT signal handler
+/* This function will be set as the signal handler
    It simply breaks the main loop so that we can exit cleanly */
 	keepGoing = 0;
 }

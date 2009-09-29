@@ -32,7 +32,7 @@ void cleanUpDB(PGconn *conn, int night){
 		syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
 	} //else printf("table updated\n"); 
 
-	if (night >= 10) {
+	if (night >= 50) {
 		res = PQexec(conn,
 		"UPDATE camera SET status = 0, message = 'Night Detected, Not Recording'");
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
