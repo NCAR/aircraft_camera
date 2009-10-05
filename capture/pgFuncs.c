@@ -1,6 +1,9 @@
 #include "pgFuncs.h"	
 
 int connectDB(PGconn **conn, char* dbHost, int getFNfromDB) {
+/* function takes a pointer to posgres connection pointer and creates the connection
+	using PQconnect functions */
+
 	char dbConnectString[100];
 	int useDB = 1;
 	sprintf(dbConnectString, "host=%s dbname=real-time user=ads", dbHost);
@@ -24,6 +27,7 @@ int connectDB(PGconn **conn, char* dbHost, int getFNfromDB) {
 
 
 void cleanUpDB(PGconn *conn, int night){
+/* This function ends the postgres connection after updating the status one last time */
 
 	PGresult *res;
 
@@ -115,6 +119,8 @@ int updatePostgres(PGconn *conn, const char * img_name, int camNum) {
 }
 
 int getDbFlNum(PGconn *conn, char **flNum) {
+/* This function copies the flight number into the string that **flNum points to */
+
 	PGresult *res;
 	res = PQexec(conn, "SELECT value FROM global_attributes WHERE key='FlightNumber'");
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {

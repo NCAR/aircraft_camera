@@ -34,7 +34,7 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 		if (decoment(line) && strcmp(line, "")){
 			sscanf(line, "%s %s", param, value);
 		
-			/* find 'camID' */
+			/* is this line a new camera ? */
 			if (!strcmp(param, "camID")){
 
 				/* this is the next camID, we are done! */
@@ -53,7 +53,7 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 				}
 			} 
 
-			/* parse this data */
+			/* if it's under our camID, parse this line for data */
 			else if (foundID) {
 				fillConf(camConf, param, value);
 			}

@@ -3,85 +3,55 @@
 #This is the initscript for the capture program
 
 #set these vars correctly for your setup
-dbHOST=acserver                              # real-time postgres db hostname
-capture=/usr/bin/capture                     # path to capture program
-pidfile=/var/run/capture/capture.pid	     # path to pid file
-LOC='/mnt/cam/camera_images/flight_number_'  #location where images will be stored (should be on webserver)
-CONF='/etc/capture.conf'		             #location of camera configuration file
-monitor_script='/usr/sbin/capture_monitor.sh'
+dbHOST="acserver"                      # real-time postgres db hostname
+capture="/usr/bin/capture"                       # path to capture program
+LOC='/mnt/acserver/r2/camera_images/flight_number_'      #location where images will be stored
+CONF='/etc/capture.conf'                   #location of camera configuration file
+monitor_script="/usr/sbin/capture_monitor.sh $dbHOST $0"
+logit="logger -t capture_init -s -p local1.notice"         # command to send message to syslog & stderr
 
 start() {
 
-	#check to see if file exists
-	if [ ! -s "$pidfile" ]
+	# make sure no other capture process is running 
+	if ! ps h -C $capture > /dev/null
 	then
 		#start capture program
-		( $capture -c $CONF -f $LOC -d $dbHOST ) &
+		($capture -c $CONF -f $LOC -d $dbHOST $logfile) &
 
-		#store pid for stop script
 		cap_pid=$!
-		retval=$?
-		echo $cap_pid > $pidfile
-		echo started cams
+		$logit "started capture [pid: $cap_pid]"
 
-			#launch a monitor script, unless start was called by an already running monitor
-			if [ "$1" = "launch" ]; then
-				$monitor_script & 
-			echo "started monitor"
-			fi
+	        #launch a monitor script, unless start was called by an already running monitor
+	        if [ "$1" = "launch" ]; then
+        	    $monitor_script $cap_pid &	 
+				mon_pid=$!
+		    $logit "started monitor [pid: $mon_pid]"
+	        fi
 
-		return $retval
 	else
-		junk=`ps aux | grep -v grep | grep $capture`
-		if [ $? -eq 0 ]
-		then
-			echo already running
-			exit 1
-		else
-			restart
-		fi
+		$logit "capture already running"
+		exit 1
 	fi	
 
 }
 
 stop() {
-	cap_pid=`cat $pidfile`
-	junk=`kill -s HUP $cap_pid`  #send ctrl-c signal to allow program to clean up
-	RETVAL=$?
-	
-	cat /dev/null > $pidfile #clear pid file
-	echo stopped cams
-	junk=`psql -U ads -d real-time -h $dbHOST -c "UPDATE camera SET status=0,message='Recording Stopped';"`
-	return $RETVAL
+
+	#send ctrl-c signal to allow program to clean up
+	ps h -C capture > /dev/null && killall -HUP capture
+
+	$logit "stopped cams"
 }
 
 restart() {
 	stop
 	sleep 3
-	start
+	start $1
 }
 
 status(){
 	STATUS=`psql -U ads -h $dbHOST -d real-time -t -c "Select status from camera;"`
 	MESSAGE=`psql -U ads -h $dbHOST -d real-time -t -c "Select message from camera;"`
-	
-	if [ -s "$pidfile" ]
-	then
-		junk=`ps aux | grep -v grep | grep $capture`
-		if [ $? -eq 0 ]
-		then
-			if [ ! "$STATUS" = "0" ]
-			then
-				echo "Capture process running correctly"
-			else
-				echo "Capture process is running but not correctly updating the database, could be caused by a network issue or incorrectly specified database"
-			fi
-		else
-			echo "Capture process ended without calling this init script, could be triggered by night detection or error on the bus"
-		fi
-	else
-		echo "Capture process is not running"
-	fi
 	
 	echo -e "\nInitScript Variables:"
 	echo -e "\tLatest Server Message:\t$MESSAGE"
@@ -110,7 +80,7 @@ case "$1" in
 	start
 	;;
   *)
-	echo $"Usage: $0 {start|stop|restart|status}"
+	echo $"Usage: $0 {start|start_no_mon|stop|restart|status}"
 	exit 1
 	;;
 esac
