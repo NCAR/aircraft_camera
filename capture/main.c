@@ -30,12 +30,13 @@
 #define FILE_PREFIX "./flight_number_"
 #define DB_HOST "acserver"
 
+void wait_for_camera(dc1394_t *d);
 int bus_count_changed(dc1394_t *d, int numCams);
 int cleanup_d(camConf_t ***, int, status_t *);
 int reinitialize_d(char *, dc1394_t *, camConf_t ***, status_t *, int *, PGconn *, char *, char *);
 void finishUp();
 void getTime(char *, char *);
-void parseInputLine(int, char **, char**, char**, char**, char**, int*);
+void parseInputLine(int, char **, char**, char**, char**, char**, int*, int*);
 char *defaults(char **arg, char *value);
 void printArgsError(char *);
 
@@ -45,7 +46,7 @@ int keepGoing = 1;
 int main(int argc, char *argv[])
 {
 	/* declare vars */
-	int i, useDB = 1, getFNfromDB = 0, night=0, camCount=0, rescanCount=0;
+	int i, useDB = 1, getFNfromDB = 0, night=0, camCount=0, waitbus=0, rescanCount=0;
 	char timeStr[20];
 	status_t statMC;				//struct to hold cumulative status data
 	camConf_t **camArray = NULL;	//array to hold settings from conf file
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
 
 
 	/* get input args */
-	parseInputLine(argc, argv, &conf, &prefix, &dbHost, &flNum, &getFNfromDB);
+	parseInputLine(argc, argv, &conf, &prefix, &dbHost, &flNum, &getFNfromDB, &waitbus);
 
 	/* connect to postgres db */
 	useDB = connectDB(&conn, dbHost, getFNfromDB);
@@ -75,6 +76,9 @@ int main(int argc, char *argv[])
 
 	/* set up libdc1394 object */		
 	if ( !(d=dc1394_new()) ) return 1;
+
+	/* if -w was specified, wait for a camera to show up on the bus */
+	if (waitbus) wait_for_camera(d);
 
 	/* allocate/set up camArray */
 	camCount = reinitialize_d(flNum, d, &camArray, &statMC, &useDB, conn, conf, prefix);
@@ -154,6 +158,21 @@ int bus_count_changed(dc1394_t *d, int numCams) {
 
 }
 
+void wait_for_camera(dc1394_t *d) {
+	int cam_on_bus = 0;
+	syslog(LOG_NOTICE, "waiting for a camera to be detected on the bus");
+	printf("waiting for a camera to be detected on the bus\n");
+
+	while (!cam_on_bus && keepGoing){
+		if (bus_count_changed(d, 0) == 0) {
+			sleep(5);
+		} else {
+			syslog(LOG_NOTICE, "camera detected on bus");
+			return;
+		}
+	}
+}
+
 int cleanup_d(camConf_t ***camArray_ptr, int camCount, status_t *statMC) {
 
 	camConf_t **camArray = *camArray_ptr;
@@ -207,7 +226,7 @@ int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t
 	}
 
 	/* set up camera table in postgres db, if connected */
-	if(*useDB != 0) initPostgres(conn, camArray, numCams);
+	if(*useDB != 0) initRow(conn, camArray, numCams);
 
 	/* allocate and setup multicast status struct */
 	multicast_status_init(statMC, camArray, numCams);
@@ -245,7 +264,7 @@ void getTime(char *s1, char *s2){
 	return;
 }
 
-void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, char **dbHost, char **flNum, int *getFNfromDB){
+void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, char **dbHost, char **flNum, int *getFNfromDB, int *wait){
 
 	int i=0;
 	char opt; 
@@ -255,22 +274,24 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 
 	/* set to NULL, so we can apply defaults if needed later */
 	*flNum = *confFile = *filePrefix = *dbHost = NULL;
-	*getFNfromDB = 0;
+	*getFNfromDB = *wait = 0;
 
 	while (i<argc) {
 		if (*argv[i] == '-'){
 			opt = *(argv[i]+1);
-			i++;
 			switch (opt) {
 				case 'c':
-					*confFile = argv[i];
+					*confFile = argv[++i];
 					break;
 				case 'f':
-					*filePrefix = argv[i];
+					*filePrefix = argv[++i];
 					break;
 				case 'd':
-					*dbHost = argv[i];
+					*dbHost = argv[++i];
 					*getFNfromDB = 1;
+					break;
+				case 'w':
+					*wait = 1;
 					break;
 				default:
 					printArgsError(argv[0]);

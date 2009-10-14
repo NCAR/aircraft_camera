@@ -12,7 +12,7 @@ numRetries=2
 dbHOST=$1
 init_capture=$2
 #reset_bus='/usr/sbin/capture_reset_bus'    # path to software ieee1394 bus reset program
-reset_bus='./capture_reset_bus'    # path to software ieee1394 bus reset program
+reset_bus='/usr/sbin/capture_reset_bus'    # path to software ieee1394 bus reset program
 num_deaths=0
 logit="logger -t capture_monitor -s -p local1.notice"         # command to send message to syslog & stderr
 
@@ -35,7 +35,7 @@ while true; do
 		#is process running?
 		if ps h -C capture > /dev/null
 		then
-			sleep 5
+			sleep 15
 		else 
 			#how many times has it died?
 			if [ $num_deaths -lt $numRetries ];
@@ -47,17 +47,17 @@ while true; do
 				#update database w/ error status
 				junk=`psql -U ads -d real-time -h $dbHOST -c "UPDATE camera SET status=2,message='restarting...';"`
 
-				#run dc1394_reset_bus
+				#soft-reset the firewire bus 
 				$reset_bus > /dev/null
 
-				#wait 2 seconds
-				sleep 2
+				#wait 10 seconds for cams to re-establish communcation
+				sleep 10 
 
-				#re-start capture process
+				#re-start capture process (withought launching a monitor script)
 				$init_capture start_no_mon
 				
-				#wait 3 seconds
-				sleep 3
+				#wait 10 seconds to allow new capture process to initialize 
+				sleep 10
 			else
 				#log / display error
 				$logit "Capture process has ended $numRetries times, no longer attempting to restart. Please check configuration."

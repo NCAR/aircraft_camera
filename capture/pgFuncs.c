@@ -22,6 +22,7 @@ int connectDB(PGconn **conn, char* dbHost, int getFNfromDB) {
 		}
 	} else syslog(LOG_NOTICE, "connected to database");
 
+	if (useDB) initTable(*conn);
 	return useDB;
 }
 
@@ -49,23 +50,18 @@ void cleanUpDB(PGconn *conn, int night){
 	PQfinish(conn);
 }
 
-int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
+int initTable(PGconn * conn){
 /* This function clears the old camera table and sets up a new one */
 
-	int i;
 	char command[500]; 
-	char hostname[100];
 	PGresult *res;
 	
-	/* get the local host name */
-	gethostname(hostname, 100);
-
 	/* drop existing camera table */
 	res = PQexec(conn, "DROP TABLE camera");
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		syslog(LOG_ERR, "drop table failed: %s", PQerrorMessage(conn));
 		PQclear(res);
-	} else syslog(LOG_NOTICE, "old camera table dropped"); 
+	} //else syslog(LOG_NOTICE, "old camera table dropped"); 
 
 	/* create new camera table */
 	res = PQexec(conn,
@@ -73,17 +69,34 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		syslog(LOG_ERR, "create table failed: %s", PQerrorMessage(conn));
 		PQclear(res);
-	} else syslog(LOG_NOTICE, "new camera table created");
+	} //else syslog(LOG_NOTICE, "new camera table created");
 
 	/* create single row, cameras will be added as array elements */
 	sprintf(command, 
-		"INSERT INTO camera VALUES (current_timestamp, 1, 'Recording Images', '{0}', '{0}', '{0}')"
+		"INSERT INTO camera VALUES (current_timestamp, 1, 'Waiting for Camera', '{0}', '{0}', '{0}')"
 		);
 	res = PQexec(conn, command);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		syslog(LOG_ERR, "create row failed: %s", PQerrorMessage(conn));
 		PQclear(res);
-	} else syslog(LOG_NOTICE, "added row to table");
+	} //else syslog(LOG_NOTICE, "added row to table");
+	return 1;
+}
+
+int initRow(PGconn * conn, camConf_t **camArray, int numCams){
+	int i;
+	char command[500]; 
+	PGresult *res;
+
+	/* create single row, cameras will be added as array elements */
+	sprintf(command, 
+		"UPDATE camera SET status=1,message='Recording'"
+		);
+	res = PQexec(conn, command);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+		syslog(LOG_ERR, "update status failed: %s", PQerrorMessage(conn));
+		PQclear(res);
+	} 
 
 	/* fill in array with camera data */
 	for (i=0; i<numCams; i++) {
@@ -91,7 +104,7 @@ int initPostgres(PGconn * conn, camConf_t **camArray, int numCams){
 			, i+1, camArray[i]->guid, i+1, camArray[i]->direction);
 		res = PQexec(conn, command);
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-			syslog(LOG_ERR, "add row failed: %s", PQerrorMessage(conn));
+			syslog(LOG_ERR, "update camera failed: %s", PQerrorMessage(conn));
 			PQclear(res);
 		} else syslog(LOG_NOTICE, "added camera: %llx to db", camArray[i]->guid); 
 	}

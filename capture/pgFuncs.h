@@ -9,7 +9,8 @@
 
 int connectDB(PGconn **conn, char* dbHost, int getFNfromDB);
 void cleanUpDB(PGconn*, int);
-int initPostgres(PGconn*, camConf_t**, int);
+int initTable(PGconn*);
+int initRow(PGconn*, camConf_t**, int);
 int updatePostgres(PGconn*, const char*, int); 
 int getDbFlNum(PGconn*, char**);
 char *trimWhiteSpace(char*);

@@ -14,7 +14,6 @@ Buildroot: %{_tmppath}/%{name}-root
 %description
 This program finds any cameras on the Firewire (ieee1394) bus and attempts to capture images from them. The program can output raw CCD data, uncompressed color images (.ppm), lossy compressed imges (.jpg) or lossess compressed images (.png). The Program also keeps a Post- greSQL database up to date with the latest image written, as well as the direction/guid of each camera, and process status (running/not).
 
-The program attempts to capture images once per second, the only notable exception to this occurs when png output is enabled. The png comression takes too long and the once/second deadline is not met.
 
 %prep
 %setup -n capture-camserver
@@ -22,17 +21,14 @@ The program attempts to capture images once per second, the only notable excepti
 %build
 make
 gzip -c capture.man.1 > capture.1.gz
-gzip -c capture.man.5 > capture.5.gz
 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr/{{s,}bin,share/man/man{1,5}}
 mkdir -p $RPM_BUILD_ROOT/etc/{rc.d/rc3.d,init.d}
-mkdir -p $RPM_BUILD_ROOT/var/run/capture/
 mkdir -p $RPM_BUILD_ROOT/var/www/html/camera
 cp capture $RPM_BUILD_ROOT/%{_bindir}/
 cp capture.1.gz $RPM_BUILD_ROOT/%{_mandir}/man1/
-cp capture.5.gz $RPM_BUILD_ROOT/%{_mandir}/man5/
 cp capture.conf $RPM_BUILD_ROOT/etc/
 cp capture_reset_bus $RPM_BUILD_ROOT/usr/sbin/
 cp capture_monitor.sh $RPM_BUILD_ROOT/usr/sbin/
@@ -46,7 +42,7 @@ chkconfig httpd on
 ln -s /etc/init.d/capture /etc/rc.d/rc3.d/K99capture
 
 #setup automount so that accam:/mnt/cam/images => acserver:/mnt/r2/camera_images
-echo "/mnt/acserver	/etc/local/acserver.map nolock,nosuid,nodev,rsize=32768,wsize=32768,intr" >> /etc/auto.master
+echo "/mnt/acserver	/etc/local/acserver.map" >> /etc/auto.master
 mkdir /etc/local
 echo "r2	acserver.raf.ucar.edu:/mnt/r2" >> /etc/local/acserver.map
 
@@ -67,11 +63,9 @@ rm /etc/rc.d/rc3.d/K99capture
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%dir %attr(0775,ads,apache) /var/run/capture
 %config(noreplace) %attr(0664,ads,apache) /etc/capture.conf
 %attr(0775,ads,apache) %{_bindir}/capture
 %attr(644,root,root) %doc %{_mandir}/man1/capture.1.gz
-%attr(644,root,root) %doc %{_mandir}/man5/capture.5.gz
 %attr(0774,ads,apache) /etc/init.d/capture
 %attr(0664,ads,apache) /var/www/html/camera/capture.php
 %attr(0774,ads,apache) /usr/sbin/capture_monitor.sh
