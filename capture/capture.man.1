@@ -6,9 +6,11 @@ Capture
 
 .SH SYNOPSIS
 .P
-capture [-c <config file>] [-f <file prefix>] -d <database host> || <flight number>
+capture [-w] [-c <config file>] [-f <file prefix>] [-d <database host>] <flight number>
 .P
 If you specify a database, the flight number will be pulled from the global_attributes table, otherwise you must specify a flight number on the command line.
+
+"capture test" Is an easy way to test the program without needing a database connection. Images will be placed in ./flight_number_test/
 
 .SH DESCRIPTION
 .P
@@ -18,9 +20,16 @@ This program finds any cameras on the Firewire (ieee1394) bus and attempts to ca
 The program attempts to capture images once per second, the only notable exception to this occurs when png output is enabled. The png compression takes too long and the once/second deadline is not met.
 
 .P
-The settings for each camera are defined in a config file. For more information about the config file 'man 5 capture' or visit this web page: http://wiki.eol.ucar.edu/sew/Aircraft/DigitalCamera.
+The settings for each camera are defined in a config file. For more information about the config file visit this web page: http://wiki.eol.ucar.edu/sew/Aircraft/DigitalCamera.
 
 .SH OPTIONS
+.P
+.B
+	-w 
+.RS
+Wait for a camera to show up on the bus before attempting to capture. This is useful when running the camera DSM in the GV because the forward facing camera does not get power until after takeoff.
+.RE
+
 .P
 .B
 	-c 
@@ -54,12 +63,13 @@ Specify the hostname or ip address of the postgreSQL server that you want this c
  status      | integer   | 0 => not running, 1 => running
  message     | text      | Status message for human readability
  guid        | text[]    | Array of GUID for each cameras
- direction   | text[]    | Array of directions of each cameras
- latest      | text[]    | Array of latest image saved from each camera
+ direction   | text[]    | Array of directions of each camera
+ latest      | text[]    | Array with name of last image saved
 .RE
 
 .P
-flight_number
+.B
+	flight_number
 .RS
 If you do not specify a database, you must manually specify the flight number (useful for testing).
 .RE

@@ -1,4 +1,5 @@
 #include "pgFuncs.h"	
+extern int interrupted;
 
 int connectDB(PGconn **conn, char* dbHost, int getFNfromDB) {
 /* function takes a pointer to posgres connection pointer and creates the connection
@@ -27,22 +28,22 @@ int connectDB(PGconn **conn, char* dbHost, int getFNfromDB) {
 }
 
 
-void cleanUpDB(PGconn *conn, int night){
+void cleanUpDB(PGconn *conn){
 /* This function ends the postgres connection after updating the status one last time */
 
 	PGresult *res;
 
-	res = PQexec(conn, "UPDATE camera SET status=0, message='Recording Stopped'");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
-	} //else printf("table updated\n"); 
-
-	if (night >= 50) {
-		res = PQexec(conn,
-		"UPDATE camera SET status = 0, message = 'Night Detected, Not Recording'");
+	if (interrupted) {
+		res = PQexec(conn, "UPDATE camera SET status=0, message='Recording Stopped'");
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 			syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
-			PQclear(res);
+		} 
+
+	} else {
+		res = PQexec(conn,
+		"UPDATE camera SET status = 0, message = 'Night Detected, Recording Stopped'");
+		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+			syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
 		}
 	}
 
@@ -73,7 +74,7 @@ int initTable(PGconn * conn){
 
 	/* create single row, cameras will be added as array elements */
 	sprintf(command, 
-		"INSERT INTO camera VALUES (current_timestamp, 1, 'Waiting for Camera', '{0}', '{0}', '{0}')"
+		"INSERT INTO camera VALUES (current_timestamp, 0, 'Waiting for Camera', '{0}', '{0}', '{0}')"
 		);
 	res = PQexec(conn, command);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -84,11 +85,11 @@ int initTable(PGconn * conn){
 }
 
 int initRow(PGconn * conn, camConf_t **camArray, int numCams){
+/* this function sets the values of the camera table */
 	int i;
 	char command[500]; 
 	PGresult *res;
 
-	/* create single row, cameras will be added as array elements */
 	sprintf(command, 
 		"UPDATE camera SET status=1,message='Recording'"
 		);

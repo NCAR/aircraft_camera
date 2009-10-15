@@ -41,7 +41,7 @@ char *defaults(char **arg, char *value);
 void printArgsError(char *);
 
 /* global variable for interrupt handling */
-int keepGoing = 1;
+int interrupted = 0;
 
 int main(int argc, char *argv[])
 {
@@ -63,7 +63,6 @@ int main(int argc, char *argv[])
 	/* set up syslog */
 	setlogmask(LOG_UPTO(LOG_DEBUG));
 	openlog("capture:", LOG_CONS | LOG_PID, LOG_LOCAL1);
-
 
 	/* get input args */
 	parseInputLine(argc, argv, &conf, &prefix, &dbHost, &flNum, &getFNfromDB, &waitbus);
@@ -87,7 +86,7 @@ int main(int argc, char *argv[])
 	/*				 %=== MAIN LOOP HERE ===% 
 	 * keep getting pictures until signal or night detection 
 	 */
-	while(keepGoing && night<MAX_NIGHT_VAL){
+	while(!interrupted && night<MAX_NIGHT_VAL){
 
 		/* spawn child (timer) process to wait one second, then die */
 		if( !(cpid = fork()) ) {
@@ -130,12 +129,12 @@ int main(int argc, char *argv[])
 	}
 
 	/* log the reason for stopping the program */
-	if (night>=MAX_NIGHT_VAL) syslog(LOG_NOTICE, "night detected, shutting down");
-	else syslog(LOG_NOTICE, "signal captured, shutting down");
+	if (interrupted) syslog(LOG_NOTICE, "signal captured, shutting down");
+	else syslog(LOG_NOTICE, "night detected, shutting down");
 
 	/* clean up memory and exit */
 	cleanup_d(&camArray, camCount, &statMC);
-	if(useDB) cleanUpDB(conn, night);	//update DB and close connection
+	if(useDB) cleanUpDB(conn);	//update DB and close connection
 	dc1394_free(d);
 
 	return 0;
@@ -159,11 +158,9 @@ int bus_count_changed(dc1394_t *d, int numCams) {
 }
 
 void wait_for_camera(dc1394_t *d) {
-	int cam_on_bus = 0;
 	syslog(LOG_NOTICE, "waiting for a camera to be detected on the bus");
-	printf("waiting for a camera to be detected on the bus\n");
 
-	while (!cam_on_bus && keepGoing){
+	while (!interrupted){
 		if (bus_count_changed(d, 0) == 0) {
 			sleep(5);
 		} else {
@@ -241,14 +238,14 @@ int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t
 void finishUp(){
 /* This function will be set as the signal handler
    It simply breaks the main loop so that we can exit cleanly */
-	keepGoing = 0;
+	interrupted = 1;
 }
 
 void getTime(char *s1, char *s2){
 /* This function updates the strings passed in to the current date and time,
-    formatted as follows:
-    s1 (for image name): YYMMDD-HHMMSS 
-    s2 (for status packet): YYYY-MM-DD HH:MM:SS
+	formatted as follows:
+	s1 (for image name): YYMMDD-HHMMSS 
+	s2 (for status packet): YYYY-MM-DD HH:MM:SS
 */
 	struct tm *t;
 	time_t rawtime;

@@ -27,6 +27,7 @@
 
 int main(int argc, char *argv[])
 {
+	int i;
     dc1394_t * d;
     dc1394camera_list_t * list;
     dc1394camera_t *camera;
@@ -41,7 +42,11 @@ int main(int argc, char *argv[])
     if (list->num == 0) {
         dc1394_log_error("No cameras found");
         return 1;
-    }
+    } else {
+		for (i=0; i<list->num; i++) {
+			printf("found camera: %llx on bus\n", list->ids[i].guid);
+		}
+	}
 
     camera = dc1394_camera_new (d, list->ids[0].guid);
     if (!camera) {
@@ -49,8 +54,6 @@ int main(int argc, char *argv[])
         return 1;
     }
     dc1394_camera_free_list (list);
-
-    printf("Using camera with GUID %"PRIx64"\n", camera->guid);
 
     printf ("Reseting bus...\n");
     if (dc1394_reset_bus (camera) != DC1394_SUCCESS)

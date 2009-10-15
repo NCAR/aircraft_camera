@@ -17,7 +17,7 @@ xmp.o: getIMG.h
 pgFuncs.o: pgFuncs.h
 multicast.o: multicast.h
 
-capture_reset_bus:
+capture_reset_bus: reset_bus.c
 	$(CC) reset_bus.c -o capture_reset_bus $(DCLIB)
 
 clean:

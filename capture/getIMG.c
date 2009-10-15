@@ -130,7 +130,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 	/* debayer the image for all other formats*/
 	dc1394video_frame_t *new_frame;
    	new_frame=calloc(1,sizeof(dc1394video_frame_t));
-	dc1394_debayer_frames(frame, new_frame, DC1394_BAYER_METHOD_BILINEAR);
+	dc1394_debayer_frames(frame, new_frame, camConfig->bayerMethod);
 
 	/* save image as uncompressed .ppm image, if requested */
 	if(camConfig->ppm){	
