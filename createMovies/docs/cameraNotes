@@ -1,3 +1,5 @@
+RAF Aircraft Camera Image processing notes
+
 Cameras:
 	C130 forward: AXIS network camera.
 		This could be changed out for a 'FLEA' (see below) in the future.
@@ -5,12 +7,12 @@ Cameras:
 		Images have date and time stamped on them.
 		images name: c130_fwd_YYMMDD_HHMMSS.jpg (May want to change '_' to '-' in future).
 
-	C130 down, GV forward
+	C130 down, GV forward, GV left, GV right
 		Point Grey color FLEA.
 		Powered only during flight
 		1024x768 square pixels.
 		image name: YYMMDD-HHMMSS.jpg
-		Directory: YYMMDD-HHMMSS for time when camera DSM was powered on, typically 1/2 hour pre-flight.
+		Directory: YYMMDD-HHMMSS from time when camera DSM was powered on, typically 1/2 hour pre-flight.
 
 Post-flight:
 	Back up images.
@@ -30,9 +32,11 @@ Post-flight:
 Post-project
 	Send image to mass store.
 	Determine desired annotation variables and set up parameters file.
+
 	Generate final movies
 		Run movie.pl for single camera, combineCameras.pl for two cameras.
 		Generate movies with Quicktime or in movie.pl with ffmpeg.
+
 	Produce README file.
 	Optional - Convert Axis images to 640x480 for square pixels,
 	Optional - Apply sharpening, possibly reduce resolution for Flea images.
