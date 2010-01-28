@@ -181,7 +181,7 @@ print "Camera defaults set for $keywords->{cameraName}\n";
 # -------------------------------------------------------------------
 # Get flight info from header file
 # -------------------------------------------------------------------
-my ($projectNumber,$flightNumber,$time_interval,$headerText) = 
+my ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes) = 
     &dump_netcdfFile_header($keywords->{netcdfFile},$headerDump);
 
 # -------------------------------------------------------------------
@@ -366,13 +366,15 @@ foreach my $fileName (@jpegFiles) {
 # --------------------------------------------------------------------
 my $outputFrameRate = $keywords->{outputFrameRate};;
 my $mp4BitRate = $keywords->{mp4BitRate};;
+
+my $outputFilename = "$flightNumber.$outputFileTimes.mp4";
 # First ffmpeg pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 1 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
-if (system "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
+if (system "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename") {die "Unable to create MPEG file $outputFilename, pass 1"};
 
 # Second pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 2 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
-if (system "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
+if (system "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename") {die "Unable to create MPEG file $outputFilename, pass 2"};
 
 
 # --------------------------------------------------------------------
@@ -537,6 +539,9 @@ sub dump_netcdfFile_header() {
     my ($mn,$dy,$yr) = split('/',$flightDate);
     my $time_interval = "$yr-$mn-$dy,$beginTime~$yr-$mn-$dy,$endTime";
     print $time_interval."\n";
+    $beginTime =~ s/://g;
+    $endTime =~ s/://g;
+    my $outputFileTimes = "$yr$mn$dy.$beginTime_$endTime";
 
     my $prelim = "\n\n";
     seek(HEADER_DUMP_FILE,0,0);
@@ -550,7 +555,7 @@ sub dump_netcdfFile_header() {
     $headerText="$projectName$projectNumber $flightNumber \n$flightDate \n $prelim ";
 
     print "Flight info retrieved from header of netCDF file  $netcdfFile\n";
-    return ($projectNumber,$flightNumber,$time_interval,$headerText);
+    return ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes);
 }
 
 # -------------------------------------------------------------------
