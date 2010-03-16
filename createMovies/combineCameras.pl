@@ -541,7 +541,7 @@ sub dump_netcdfFile_header() {
     print $time_interval."\n";
     $beginTime =~ s/://g;
     $endTime =~ s/://g;
-    my $outputFileTimes = "$yr$mn$dy.$beginTime_$endTime";
+    my $outputFileTimes = "$yr$mn$dy.${beginTime}_$endTime";
 
     my $prelim = "\n\n";
     seek(HEADER_DUMP_FILE,0,0);
