@@ -1,3 +1,4 @@
+includeData = yes
 netcdfFile = /scr/raf2/Prod_Data/ADELE/ADELE####.nc 
 # Times will be determined from the images in the imageDirectory
 # All other image dirs will try to match these times.

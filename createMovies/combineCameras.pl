@@ -47,9 +47,11 @@ my $fontSize = "13";
 
 # List possible keywords for use in ParamFile
 my %possible_keywords = ( # value = description, default
+    "includeData" => ("yes or no"),
     "netcdfFile" => ("can use #### to indicate flight, e.g. rf01"),
     "cameraName" => ("knownCameras"),
     "imageDirectory" => ("can use #### to indicate flight, e.g. rf01"),
+    "overlayImageTime" => ("yes or no"),
     "outputResolution" => ("size of entire image in pixels, e.g. num x num"),
     "outputFrameRate" => ("frames per second, Playback at 15 fps when recorded at 1 fps."),
     "scale" => (" num x num pixels, size of each camera image"),
@@ -67,6 +69,11 @@ my %possible_keywords = ( # value = description, default
     "gravity3" => ("SouthWest, North, etc"),
 );
 
+my @flightData;
+my $theText;
+my $outputWidth = 200;
+my $outputHeight;
+my ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes);
 # -------------------------------------------------------------------
 # ----------------------------- Usage -------------------------------
 # -------------------------------------------------------------------
@@ -178,26 +185,28 @@ if ($keywords->{cameraName} =~ m/Down_Flea/) {
 
 print "Camera defaults set for $keywords->{cameraName}\n";
 
-# -------------------------------------------------------------------
-# Get flight info from header file
-# -------------------------------------------------------------------
-my ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes) = 
-    &dump_netcdfFile_header($keywords->{netcdfFile},$headerDump);
+if ($keywords->{includeData} eq "yes") {
+    # -------------------------------------------------------------------
+    # Get flight info from header file
+    # -------------------------------------------------------------------
+    ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes) = 
+        &dump_netcdfFile_header($keywords->{netcdfFile},$headerDump);
 
-# -------------------------------------------------------------------
-# Create n2asc input batch file, clobbering old one if it exists.
-# -------------------------------------------------------------------
-&create_n2asc_batchfile($batchFile,$keywords,$dataFile,$time_interval);
+    # -------------------------------------------------------------------
+    # Create n2asc input batch file, clobbering old one if it exists.
+    # -------------------------------------------------------------------
+    &create_n2asc_batchfile($batchFile,$keywords,$dataFile,$time_interval);
 
-# Create data file from netCDF file using batchFile & load data file
-# into this script.
-&create_ascii_dataFile($dataFile,$batchFile);
-my ($theText, @flightData) = &load_ascii_data($dataFile);
+    # Create data file from netCDF file using batchFile & load data file
+    # into this script.
+    &create_ascii_dataFile($dataFile,$batchFile);
+    ($theText, @flightData) = &load_ascii_data($dataFile);
 
-#Write flight level data variables given in ParamFile to the label image.
-my $outputWidth = 200;
-my (undef,$outputHeight) = split(/x/,$keywords->{scale});
-&write_vars2labelImage($labelImage,$headerText,$theText,$outputHeight,$outputWidth);
+    #Write flight level data variables given in ParamFile to the label image.
+    #my $outputWidth = 200;
+    (undef,$outputHeight) = split(/x/,$keywords->{scale});
+    &write_vars2labelImage($labelImage,$headerText,$theText,$outputHeight,$outputWidth);
+}
 
 # -------------------------------------------------------------------
 # ----------------------- Load image list ---------------------------
@@ -215,6 +224,12 @@ closedir IMAGE_DIRECTORY;
 my @jpegFiles=sort @tempList;
 my $numFiles = scalar(@jpegFiles);
 print "Number of images to process = $numFiles\n";
+
+# If not including netCDF data then read flight number from image dir path.
+if ($keywords->{includeData} ne "yes") {
+    $flightNumber = $keywords->{imageDirectory};
+    $flightNumber =~ s/^.*flight_number_(....).*/$1/;
+}
 
 $annotatedImageDirectory = $annotatedImageDirectory."_$flightNumber";
 # Delete old annotated images directory and create a new (empty) one.
@@ -274,7 +289,6 @@ foreach my $fileName (@jpegFiles) {
 	if ($keywords->{numCameras} == 1) {$gravity = 'NorthWest'};
 	if ($keywords->{numCameras} == 2) {$gravity = 'NorthWest'};
 	if ($keywords->{numCameras} == 3) {$gravity = 'North'};
-	$outputImage->Composite( image=>$inputImage, gravity=>$gravity);
 	
 	# Get image time so can later pull flight data for this time from data
 	# file.
@@ -289,6 +303,14 @@ foreach my $fileName (@jpegFiles) {
 		substr($imageTime,2,2).':'.substr($imageTime,4,2);
 
 	print "image $fileNum/$numFiles: $fileName\n";
+
+	if ($keywords->{overlayImageTime} eq "yes") {
+	    my $imageDateTime = $fileName;
+	    $imageDateTime =~ s/.jpg//;
+	    $inputImage->Annotate(gravity=>'SouthWest', font=>"Helvetica-Bold",
+	        undercolor=>'grey85', pointsize=>12, text=>$imageDateTime);
+	}
+	$outputImage->Composite( image=>$inputImage, gravity=>$gravity);
 
 	# Now process the rest of the cameras (if extant).
 	if ($keywords->{numCameras} > 1) {
@@ -317,10 +339,11 @@ foreach my $fileName (@jpegFiles) {
 	# the netCDF file. This is a safe assumption, especially with production
 	# data. BUT the first image must be equal to or later than the first 
 	# data point.
-	while (substr($flightData[0],11,8) ne $imageTime_withColons)  {
-#	    print "M";	# Can count 'M's to find out how many images were 
-	    		# missing.
-	    shift(@flightData);
+        if ($keywords->{includeData} eq "yes") {
+	    while (substr($flightData[0],11,8) ne $imageTime_withColons)  {
+#	        print "M";	# Can count 'M's to find out how many images were 
+	        		# missing.
+	        shift(@flightData);
 		if (scalar(@flightData) == 0) {
 		    die "End of data file reached searching for ".
 		        "$imageTime_withColons";
@@ -329,32 +352,33 @@ foreach my $fileName (@jpegFiles) {
 			# this continue to next image.
 			exit;	
 		}
-	}
+	    }
 	
-	# Create the data string.
-	my @dataItems = split(',',shift(@flightData));
-	$theText = '';
-	foreach my $value (@dataItems) { 
+	    # Create the data string.
+	    my @dataItems = split(',',shift(@flightData));
+	    $theText = '';
+	    foreach my $value (@dataItems) { 
 		$theText=$theText.sprintf("%s\n", $value);
-	}
-#	chomp $theText;		# Remove final newline.
+	    }
+#	    chomp $theText;		# Remove final newline.
 	
-	# Initialize image used for variable values.
-	$valueImage->Set( size=>"${outputWidth}x$outputHeight");
-	$valueImage->ReadImage('xc:none');		# Transparent canvas
+	    # Initialize image used for variable values.
+	    $valueImage->Set( size=>"${outputWidth}x$outputHeight");
+	    $valueImage->ReadImage('xc:none');		# Transparent canvas
 
-	# Add an image consisting of the variable values to the bottom,
-	# right so can overlay with the existing labelImage
-	$valueImage->Annotate( font=>$annotationFont, pointsize=>$fontSize, x=>15,
-	    weight=>500, gravity=>'SouthEast', fill=>'black',text=>"$theText");
+	    # Add an image consisting of the variable values to the bottom,
+	    # right so can overlay with the existing labelImage
+	    $valueImage->Annotate( font=>$annotationFont, pointsize=>$fontSize, x=>15,
+	        weight=>500, gravity=>'SouthEast', fill=>'black',text=>"$theText");
 
-	#################	
-	# Composite all three images (variable values, labels, and camera image).
-	# Put the values along the lower right side of the image
-	#################	
+	    #################	
+	    # Composite all three images (variable values, labels, and camera image).
+	    # Put the values along the lower right side of the image
+	    #################	
 	
-	$outputImage->Composite( image=>$valueImage, gravity=>'NorthEast');
-	$outputImage->Composite( image=>$labelImage, gravity=>'NorthEast');
+	    $outputImage->Composite( image=>$valueImage, gravity=>'NorthEast');
+        }
+	    $outputImage->Composite( image=>$labelImage, gravity=>'NorthEast');
 
 	# write out the image.
 	my $outputImageName=sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
@@ -370,11 +394,12 @@ my $mp4BitRate = $keywords->{mp4BitRate};;
 my $outputFilename = "$flightNumber.$outputFileTimes.mp4";
 # First ffmpeg pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 1 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
-if (system "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename") {die "Unable to create MPEG file $outputFilename, pass 1"};
-
+my $command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+if (system "$command") { die "Unable to create MPEG file $outputFilename, pass 1 using command $command"}; 
 # Second pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 2 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
-if (system "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename") {die "Unable to create MPEG file $outputFilename, pass 2"};
+$command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+if (system "$command") {die "Unable to create MPEG file $outputFilename, pass 2 using command $command"};
 
 
 # --------------------------------------------------------------------
