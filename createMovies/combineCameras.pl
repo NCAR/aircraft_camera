@@ -16,6 +16,10 @@ use strict;
 # Generalized to support many different camera configuration/number of
 # cameras.
 
+# 2010 Jun 17 - JAG
+# Added ability to increment enddate extracted from .nc global vals if flight
+# rolls over midnight.
+
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -32,6 +36,8 @@ use strict;
 #Uses ...
 use Image::Magick;		# Non-standard ImageMagick extensions.
 use Sys::Hostname;		# standard module for determining hostname.
+use Time::Local;
+use POSIX qw(strftime);
 
 # -------------------------------------------------------------------
 # ------------------------ Hardcoded values -------------------------
@@ -562,7 +568,19 @@ sub dump_netcdfFile_header() {
     (my $flightDate)=($tempVar[0] =~ /^\s+:FlightDate = "(.*)"/);
 
     my ($mn,$dy,$yr) = split('/',$flightDate);
-    my $time_interval = "$yr-$mn-$dy,$beginTime~$yr-$mn-$dy,$endTime";
+    my ($emn,$edy,$eyr) = split('/',$flightDate);
+    # If endTime < beginTime, then rolled over midnight, so increment end
+    # date by one day.
+    my ($bhr,$bmn,$bsec) = split(':',$beginTime);
+    my ($ehr,$emn,$esec) = split(':',$endTime);
+    my $endDate = timegm($esec,$emn,$ehr,$dy,$mn-1,$yr);
+    my $beginDate = timegm($bsec,$bmn,$bhr,$dy,$mn-1,$yr);
+    if ($endDate < $beginDate) {
+	($eyr,$emn,$edy) = 
+	    split '-',strftime('%Y-%m-%d',gmtime($endDate+86400));
+    }
+
+    my $time_interval = "$yr-$mn-$dy,$beginTime~$eyr-$emn-$edy,$endTime";
     print $time_interval."\n";
     $beginTime =~ s/://g;
     $endTime =~ s/://g;
