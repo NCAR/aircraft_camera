@@ -20,6 +20,15 @@ use strict;
 # Added ability to increment enddate extracted from .nc global vals if flight
 # rolls over midnight.
 
+# 2010 Jun 21 - JAG
+# Move outputWidth to keywords (was hardcoded) so that if data is too wide
+# and overwrites labels, it can be fixed in config file.
+# Change data image height to pull from outputResolution, not scale, so
+# data can be taller than image if necessary to accomodate PI var request
+# list.
+# Bug in enddate extraction added Jun 17. Both end month and end minute were 
+# emn - fixed.
+
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -59,6 +68,7 @@ my %possible_keywords = ( # value = description, default
     "imageDirectory" => ("can use #### to indicate flight, e.g. rf01"),
     "overlayImageTime" => ("yes or no"),
     "outputResolution" => ("size of entire image in pixels, e.g. num x num"),
+    "outputWidth" => ("Width of data portion of image; default = 200"),
     "outputFrameRate" => ("frames per second, Playback at 15 fps when recorded at 1 fps."),
     "scale" => (" num x num pixels, size of each camera image"),
     "gamma" => (" eg 1.1"),
@@ -77,8 +87,8 @@ my %possible_keywords = ( # value = description, default
 
 my @flightData;
 my $theText;
-my $outputWidth = 200;
 my $outputHeight;
+my $outputWidth;
 my ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes);
 # -------------------------------------------------------------------
 # ----------------------------- Usage -------------------------------
@@ -153,6 +163,8 @@ if (!$found) {die "Unknown camera! \n";}
 
 if (!$keywords->{numCameras}) {$keywords->{numCameras} = 1;}
 if (!$keywords->{includeProjectName}) {$keywords->{includeProjectName}="no";}
+if (!$keywords->{overlayImageTime}) {$keywords->{overlayImageTime}="no";}
+if (!$keywords->{outputWidth}) {$keywords->{outputWidth}=200;}
 
 if ($keywords->{cameraName} =~ m/Axis/) {	
         # rescale to square pixels (width / 1.1) in approximate widescreen (16:9)
@@ -209,8 +221,8 @@ if ($keywords->{includeData} eq "yes") {
     ($theText, @flightData) = &load_ascii_data($dataFile);
 
     #Write flight level data variables given in ParamFile to the label image.
-    #my $outputWidth = 200;
-    (undef,$outputHeight) = split(/x/,$keywords->{scale});
+    (undef,$outputHeight) = split(/x/,$keywords->{outputResolution});
+    $outputWidth = $keywords->{outputWidth};
     &write_vars2labelImage($labelImage,$headerText,$theText,$outputHeight,$outputWidth);
 }
 
@@ -568,7 +580,7 @@ sub dump_netcdfFile_header() {
     (my $flightDate)=($tempVar[0] =~ /^\s+:FlightDate = "(.*)"/);
 
     my ($mn,$dy,$yr) = split('/',$flightDate);
-    my ($emn,$edy,$eyr) = split('/',$flightDate);
+    my ($emon,$edy,$eyr) = split('/',$flightDate);
     # If endTime < beginTime, then rolled over midnight, so increment end
     # date by one day.
     my ($bhr,$bmn,$bsec) = split(':',$beginTime);
@@ -576,11 +588,11 @@ sub dump_netcdfFile_header() {
     my $endDate = timegm($esec,$emn,$ehr,$dy,$mn-1,$yr);
     my $beginDate = timegm($bsec,$bmn,$bhr,$dy,$mn-1,$yr);
     if ($endDate < $beginDate) {
-	($eyr,$emn,$edy) = 
+	($eyr,$emon,$edy) = 
 	    split '-',strftime('%Y-%m-%d',gmtime($endDate+86400));
     }
 
-    my $time_interval = "$yr-$mn-$dy,$beginTime~$eyr-$emn-$edy,$endTime";
+    my $time_interval = "$yr-$mn-$dy,$beginTime~$eyr-$emon-$edy,$endTime";
     print $time_interval."\n";
     $beginTime =~ s/://g;
     $endTime =~ s/://g;
@@ -666,7 +678,6 @@ sub load_ascii_data() {
   #chomp $theText;		# Remove final newline.
   return($theText,@flightData);
 }
-
 # -------------------------------------------------------------------
 # Create a small (unchanging) image consisting of the variable labels.
 # -------------------------------------------------------------------
