@@ -1,5 +1,27 @@
 #!/usr/bin/perl
+#Change Log:
+#Version 1.0
+# Parse Image magic identify -verbose output to determine darkness of image.
+#Version 1.1
+# Bug fixes
+# Added ground image checking via flt_time script using netCDF files.
+# Added a check for continuity
+#Version 1.3
+# Fixed forgotten month of september in flt_time parsing (flts after august would not have gnd images removed before)
+# Date time caparisons are now done using Time::Local (Add support for time compariton over years/months)
+# No longer propmts the user for EVERY discontinuity in time, (instead it lists them all at once and asks the user)
+#Version 1.4
+# TODO
+
+#ToDo:
+# Get netCDF info from FULL dirname (easiest to just convert a valid diretory to its full name at start of script)
+# Add command line option to set netCDF file
+# Fix commandline option for changing avg pixel/std dev thresholds
+# Use sqrt(.241R^2 + .691G^2 + .068B^2) to calculate brightness of image
+# threshold brightness of images and avg std dev
 use strict;
+use Time::Local;
+
 print "\n";
 #flags and defults
 our $ext = "jpg";
@@ -13,8 +35,12 @@ our $checkGnd = 1;
 #Ajusting these values will change what images the script removes (higher values = more bright)
 our @threshold;
 our $listfiles = 1;
-$threshold[0] = 50; #if Mean is low image is dark
-$threshold[1] = 35; #if Standard Deviation is low image is mostly one color
+$threshold[0][0] = 50; #R if Mean is low image is dark #dusk colors..
+$threshold[1][0] = 50; #G if Mean is low image is dark #green is bright!
+$threshold[2][0] = 50; #B if Mean is low image is dark #night is blue.. grr
+$threshold[0][1] = 18; #R if Standard Deviation is low image is mostly one color
+$threshold[1][1] = 15; #G if Standard Deviation is low image is mostly one color
+$threshold[2][1] = 18; #B if Standard Deviation is low image is mostly one color
 our $project = -1;
 our $flight = -1;
 our $expectedDiff = 1;
@@ -29,8 +55,8 @@ if (@ARGV <= 0) {
 
 	Options:
 		-ext:jpg	Sets file extention (Default: jpg)
-		-maxmean:##	Sets maximum average pixel value (per color) (Default:50) {0-255}
-		-maxstddev:##	Sets maximum pixel value standard deviation (per color) (Default:35) {0-255}
+		-maxmean:R|G|B	Sets maximum average pixel value (per color) (Default:35|35|55) {Range: 0-255}
+		-maxdev:R|G|B	Sets maximum pixel value standard deviation (per color) (Default:15|15|15) {Range: 0-255}
 		-t:##		Time in seconds between image files (Default:1) {Used to check consistency}
 		-proj:PLOWS	Sets project (Not needed if TARGET_DIR if of form */Raw_Data/<Project>/*/flight_number_<flightno>/* )
 		-fltno:ff01	Sets flight number (Not needed if TARGET_DIR if of form */Raw_Data/<Project>/*/flight_number_<flightno>/* )
@@ -42,8 +68,10 @@ if (@ARGV <= 0) {
 		-f		Force (Skips confimation and does not display list of dark images)
 		-r		PERMANATLY REMOVE (normally dark images are moded to target_DIR/removed/) [NOT YET IMPLEMENTED]
 		-tdir:removed	Sets name of subdir that dark images are moved to (Default: removed) [NOT YET IMPLEMENTED]
-		-s:##		File skipping, Checks every ## files and assumes the images inbetween based on the images checked (Default: 0) {0-inf}
-		-s%:##		Sets file skipping to a percentage of total files {0-100} [NOT YET IMPLEMENTED]
+		-s:##		File skipping, Checks every ## files and assumes the images inbetween based on the images checked (Default: 0) {Range: 0-inf}
+		-s%:##		Sets file skipping to a percentage of total files {Range: 0-100} [NOT YET IMPLEMENTED]
+		-sstart:##	Sets threshold speed for flt_time to be checked first (Default: 25)
+		-sstop:##	Sets threshold speed for flt_time to be checked last (Default: 80)
 EOF
 	die "";	
 }
@@ -51,8 +79,8 @@ else {
 	#Process command line arguments
 	foreach my $a (@ARGV) {
 		if ($a =~ m/-ext:(\S*)/) {$ext = $1;}
-		elsif ($a =~ m/-maxmean:(\d+)/) { $threshold[0] = $1; }
-		elsif ($a =~ m/-maxstddev:(\d+)/) { $threshold[1] = $1; }
+		elsif ($a =~ m/-maxmean:(\d+)|(\d+)|(\d+)/) { $threshold[0][0] = $1; $threshold[0][1] = $2 ; $threshold[0][2] = $3 }
+		elsif ($a =~ m/-maxdev:(\d+)|(\d+)|(\d+)/) { $threshold[1][0] = $1; $threshold[1][1] = $2 ; $threshold[0][3] = $3 }
 		elsif ($a =~ m/-t:(\d+)/) { $expectedDiff = $1; }
 		elsif ($a =~ m/-proj:(.*)/) { $project = $1; }
 		elsif ($a =~ m/-fltno:(.*)/) { $flight = $1; }
@@ -66,6 +94,9 @@ else {
 		elsif ($a =~ m/-tdir:(.*)/) {} #NOT IMPLEMENTED
 		elsif ($a =~ m/-s:(\d+)/) {$speedhack = $1; }
 		elsif ($a =~ m/-s%:(\d+)/) {} #NOT IMPLEMENTED
+		elsif ($a =~ m/-sstart:(\d+)/) { $speedstart = $1; }
+		elsif ($a =~ m/-sstop:(\d+)/) { $speedstop = $1; }
+		
 		elsif (-d $a) {$dir = $a;} #target dir
 		elsif ($a eq "" || $a eq "\n") {} #For capturing stangeness
 		else {die "INVALID ARGUMENT: $a";}	
@@ -79,11 +110,9 @@ our @files = readdir(DIR);
 close(DIR);
 print "Removing invalid files\n";
 #ignore files that don end in .$ext
-#for (my $i = 0; $i < $#files+1; $i++)
-#{
-	#if ($files[$i] !~ m/.*\.$ext/) { delete($files[$i]); }
-	@files = grep(/.*\.$ext/, @files);
-#}
+@files = grep(/.*\.$ext/, @files);
+#make sure there are some files left
+if ($#files < 0) {print "$dir does not conatin any *.$ext files!\n"; exit(1); }
 #Sort files, this allows the script to skip files and accuratly assume what the files skipped contain
 if ($speedhack || $checkGnd || $checkCont) { print "Sorting Files\n"; @files = sort { lc($a) cmp lc($b) } @files; }
 
@@ -92,18 +121,22 @@ my @filesToRemove;
 
 if ($checkCont) {
 	my $diff = 0;
+	my @gap;
 	for (my $i = 1; $i <= $#files; $i++) {
-		if ($i % int(($#files+1)/20)  == 0) { print "\rScanning for discontinuity: " . int($i/($#files+1)*100) . "% Done"; }	
+		if (int($i/$#files*100 + 0.5) % 5 == 0) { print "\rScanning for discontinuity: " . int($i/($#files+1)*100 + 0.5) . "% Done"; }
 		if ($files[$i] ne "" && $files[$i-1] ne "") {
 			$diff = DateDiff(DateFromFile($files[$i]), DateFromFile($files[$i-1]));
 			if (($diff > $expectedDiff && $diff > 0) || $diff < 0) {
-				print "\nDate discontinuity between $files[$i] and $files[$i-1] | $diff seconds\n";
-				print "To ignore press enter, otherwise input anyvalue:";
-				my $cont = <STDIN>;
-				if ($cont ne "\n") { die "Inconsistent data!\n"; }
+				#print "\nDate discontinuity between $files[$i] and $files[$i-1] | $diff seconds\n";
+				#print "To ignore press enter, otherwise input anyvalue:";
+				#my $cont = <STDIN>;
+				#if ($cont ne "\n") { die "Inconsistent data!\n"; }
+				$gap[$#gap+1][0] = $files[$i-1];
+				$gap[$#gap][1] = $files[$i]; #after the previous line a new element is created so the +1 is not needed
+				$gap[$#gap][2] = $diff;
 			}
 			elsif ($diff == 0) {
-				print "\nUnable to detect time difference between:\n     $files[$i]\n     $files[$i-1]\n";
+				print "\nUnable to detect time difference between:\n     $files[$i-1]\n     $files[$i]\n";
 				print "To ignore press enter, otherwise input anyvalue:";
 				my $cont = <STDIN>;
 				if ($cont ne "\n") { die "Inconsistent data!\n"; }
@@ -111,6 +144,14 @@ if ($checkCont) {
 		}
 	}
 	print "\rScanning for discontinuity: 100% Done\n"; 
+	if ($#gap > 0) {
+		for ($a = 0; $a <= $#gap; $a++) {
+			print "Time Gap: $gap[$a][0] -> $gap[$a][1] | $gap[$a][2]\n";
+		}
+		print "To ignore press enter, otherwise input any value:";
+		my $cont = <STDIN>;
+		if ($cont ne "\n") { print "Canceled by user\n"; exit(1); }
+	}
 }
 else
 {
@@ -140,27 +181,37 @@ if ($checkGnd) {
 	my $netCDF = "/scr/raf/Prod_Data/$project/$project$flight.nc";
 	
 	if (-e $netCDF) { #if the netCDF file is found
-		#run flt_time scrpt and pipe the output into perl
-		while ($#date+1 < 2 && $speed <= $speedstop) { 
+		#the flt_time script is kinda basic.. it will not specify weather it found an increase or decrase in speed that breached its threshold
+		#Also it will report only 1 time if it only finds one crossing
+		#so we need to ajust the speed it uses as a threshold untill it gives us some data that makes some sense
+		while ($#date+1 != 2 && $speed <= $speedstop ) { 
 			@date = ();
+			#run flt_time scrpt and pipe the output into perl
 			open(DATA, "flt_time -t $speed $netCDF|");	
 			#get takeoff and landing time from flt_time output
 			$count = 0;
 			while(<DATA>) {
 				#while flt_time is outputting
-				if ($_ =~ m/\s*\w\w\w (\w\w\w)\s*(\d?\d) (\d\d)\:(\d\d)\:(\d\d) (\d\d\d\d)\s*/) {
-					$date[$count][0] = MonthToNum($1); #month
-					$date[$count][1] = $2;#day
-					$date[$count][3] = $3;#hour
-					$date[$count][4] = $4;#min
-				$date[$count][5] = $5;#sec
-				$date[$count][2] = $6;#year
-				if ($date[$count][2] < 100) { $date[$count][2] += 2000; }
+				if ($_ =~ m/\s*\w\w\w (\w\w\w\w?)\s*(\d?\d) (\d\d)\:(\d\d)\:(\d\d) (\d\d\d\d)\s*/) {
+					$date[$count][4] = MonthToNum($1); #month
+					$date[$count][3] = $2;#day
+					$date[$count][2] = $3;#hour
+					$date[$count][1] = $4;#min
+					$date[$count][0] = $5;#sec
+					$date[$count][5] = $6;#year
+					if ($date[$count][5] < 100) { $date[$count][5] += 2000; }
+					
 					$count++;
 				}
 			}
 			close(DATA);
+			
+			#Some times the flt_time script returns dates that are mere seconds apart probably to so skipping on takeoff/landing
+			#If the takeoff and landing times are less than 10 min apart they are not useful, empty @date so the while loop continues
+			if ($#date+1 == 2 && DateDiff(@{$date[1]}, @{$date[0]}) < (10*60)) { @date = (); }
+			
 			$speed++;
+			
 		}
 		
 		if ($#date+1 == 2) { 
@@ -183,7 +234,7 @@ if ($checkGnd) {
 					$checkGnd = 0;
 				}
 				#oldest file should be older than takeoff time
-				if (IsOlder(@{$date[0]},DateFromFile($files[$#files]))) {
+				if (IsOlder(@{$date[0]}, DateFromFile($files[$#files]))) {
 					print "Oldest file is earlier than takeoff time! (";
 					PrintDate(@{$date[0]}); print " | ";
 					PrintDate(DateFromFile($files[$#files])); print ")\n";
@@ -198,7 +249,8 @@ if ($checkGnd) {
 			if ($checkGnd) {
 				#now check each file to see if it is newer than takeoff or older than landing
 				for (my $i = 0; $i <= $#files; $i++) {
-					if ($i+1 % int(($#files+1)/20)  == 0) { print "\rScanning for ground images: " . int($i+1/($#files+1)*100 + .5) . "% Done"; }
+					if (int($i/$#files*100) % 5  == 0) { print "\rScanning for ground images: " . int($i/$#files*100) . "% Done"; }
+					#print "\rScanning for ground images: " . int($i/($#files)*100 + .5) . "% Done";
 					#if file time is older than landing time remove it
 					if (IsOlder(DateFromFile($files[$i]),@{$date[1]})) { push(@filesToRemove, $i);} 
 					#if file time is earlier than takeoff time remove it
@@ -230,7 +282,7 @@ if ($checkDark) {
 
 	print "Scanning for dark images: 0% Done";
 	for (my $i = 0; $i <= $#files; $i++) {
-		if ($i+1 % int(($#files+1)/20)  == 0) { print "\rScanning for dark images: " . int($i+1/($#files+1)*100 + .5) . "% Done"; }
+		if (int($i/$#files*100) % 5  == 0) { print "\rScanning for dark images: " . int($i/$#files*100) . "% Done"; }
 		#skip files with the wrong ext Shoulden't be nessesary but just in case
 		if ($files[$i] =~ m/.*\.$ext/) {
 			#always true if $speedhack is 0, other wise skips $speedhack # of files and checks the very last file
@@ -238,7 +290,7 @@ if ($checkDark) {
 				#if image is dark store its name and deal with it later
 				if (IsDark($files[$i])) {
 					#$file is dark
-					push (@filesToRemove, $files[$i]);
+					push (@filesToRemove, $i);
 					$speeddark = 1;
 					if ($speeddark && $speedhack) {
 						#if image was dark and last image was dark all images inbetween should be dark
@@ -286,21 +338,21 @@ else { print "\rScanning for dark images: SKIPPED\n"; }
 
 sub PrintDate
 {
-	print "$_[0]/$_[1]/$_[2] $_[3]$_[4]$_[5]";
+	print $_[4]+1 . "/$_[3]/$_[5] $_[2]$_[1]$_[0]";
 }
 
 sub DateFromFile
 {
 	if ($_[0] =~ m/(\d\d)(\d\d)(\d\d)[\_|-](\d\d)(\d\d)(\d\d)\.$ext/) {
 		my @date;
-		$date[0] = $2; #Month
-		$date[1] = $3; #Day
-		$date[2] = $1; #Year
-		if ($date[2] < 100) { $date[2] += 2000; }
-		$date[3] = $4; #hour
-		$date[4] = $5; #min
-		$date[5] = $6; #sec
-		#print "$date[0]/$date[1]/$date[2] $date[3]$date[4]$date[5]\n";
+		$date[0] = $6;
+		$date[1] = $5;
+		$date[2] = $4;
+		$date[3] = $3;
+		$date[4] = $2-1;
+		$date[5] = $1;
+		if ($date[5] < 100) { $date[5] += 2000; }
+			
 		return @date;
 	}
 }
@@ -310,25 +362,21 @@ sub DateDiff
 	my @date1 = @_[0..5];
 	my @date2 = @_[6..11];
 	my $diff = 0; #in seconds
+	if ($date1[5] < 100) {$date1[5] += 2000; }
+	if ($date2[5] < 100) {$date2[5] += 2000; }
 	
-	#print "$date1[0]/$date1[1]/$date1[2] $date1[3]$date1[4]$date1[5]  |  $date2[0]/$date2[1]/$date2[2] $date2[3]$date2[4]$date2[5]\n";
-	
-	#if ($date1[0] != $date2[0]) {print "Date difference in months!\n"; return 0; }
-	if ($date1[2] != $date2[2]) {print "\nDate difference in years!\n"; return 0; }
-	
-	$diff += ($date1[1] - $date2[1])*86400; #days
-	$diff += ($date1[3] - $date2[3])*3600; #hours
-	$diff += ($date1[4] - $date2[4])*60; #mins
-	$diff += ($date1[5] - $date2[5]); #seconds
-	return $diff;
+	my $time1 = timelocal(@date1);
+	my $time2 = timelocal(@date2);
+
+	return ($time1-$time2);
 }
 
 sub MonthToNum
 {
-	my @months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Oct", "Nov", "Dec");
-	for (my $i = 1; $i <= 12; $i++)
+	my @months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
+	for (my $i = 0; $i < 12; $i++)
 	{
-		if ($_[0] eq $months[$i-1]) { return $i; }
+		if ($_[0] eq $months[$i]) { return $i; }
 	}
 	die "Invalid month: $_[0]\n";
 }
@@ -339,37 +387,20 @@ sub IsOlder
 	my @date1 = @_[0..5];
 	my @date2 = @_[6..11];
 	#expand year if need be
-	if ($date1[2] < 100) { $date1[2] += 2000; }
-	if ($date2[2] < 100) { $date2[2] += 2000; }
-	#if year is larger its older
-	if ($date1[2] > $date2[2]) { return 1; }
-	if ($date1[2] < $date2[2]) { return 0; }
-	#if month is larger its older
-	if ($date1[0] > $date2[0]) { return 1; }
-	if ($date1[0] < $date2[0]) { return 0; }
-	#if day is larger its older
-	if ($date1[1] > $date2[1]) { return 1; }
-	if ($date1[1] < $date2[1]) { return 0; }
-	#if date year month is equal then check hour
-	if ($date1[3] > $date2[3]) { return 1; }
-	if ($date1[3] < $date2[3]) { return 0; }
-	#no? houabout minute difference
-	if ($date1[4] > $date2[4]) { return 1; }
-	if ($date1[4] < $date2[4]) { return 0; }
-	#Wow these dates are alost exactly the same!
-	#how about seconds?
-	if ($date1[5] > $date2[5]) { return 1; }
-	if ($date1[5] < $date2[5]) { return 0; }	
-	#these date are the same
-	return -1;
+	if ($date1[5] < 100) { $date1[5] += 2000; }
+	if ($date2[5] < 100) { $date2[5] += 2000; }
+	
+	if (DateDiff(@_) > 0) {return 1;}
+	else {return 0;}
 }
 sub Remove
 {
 	my $cont = "\n";
+	my @indexes = @_;
 	if ($force == 0) {
 		#print a list of files to be removed
 		if ($listfiles) {
-			foreach my $i (@_) {
+			foreach my $i (@indexes) {
 				print "Remove: $files[$i]\n";
 			}
 		}
@@ -385,15 +416,15 @@ sub Remove
 
 	if ($cont eq "\n") {
 		print "\nCreating temporary directory..\n";
-		mkdir("$dir/removed/") or die $!;	
-	
+		mkdir("$dir/removed/");	
+		print "Moving images to temporary directory..\n";
 		#remove all files identified as dark
-		foreach my $i (@_) {
+		foreach my $i (@indexes) {
 			if ($verbose) {print "Moving: $dir/$files[$i] To $dir/removed/$files[$i]\n";}
-			rename("$dir/$files[$i]","$dir/removed/$files[$i]") or die $!; #rename == move
+			rename("$dir/$files[$i]","$dir/removed/$files[$i]") or die "$dir/$files[$i] | $i: $!"; #rename == move
+			$files[$i] = "REMOVE ME";
 		}
-		#remove removed files from the files array
-		foreach my $i (@_) { splice(@files, $i, 1); }
+		@files = grep(/.*\.$ext/, @files);
 	}
 }
 
@@ -437,11 +468,13 @@ sub IsDark
 	for (my $i = 0; $i < 3; $i++) {
 		#print "$colordata[$i][0] | $colordata[$i][1]\n";
 		#if mean or standard deviation is above threshold image is not dark
-		if ($colordata[$i][0] > $threshold[0]) {
+		#if ($i == 2) { print "$colordata[$i][0] | $threshold[$i][0]\n";}
+		#my $stop = <STDIN>;
+		if ($colordata[$i][0] > $threshold[$i][0]) {
 			$dark = 0;
 			last;
 		}
-		elsif ($colordata[$i][1] > $threshold[1]) {
+		elsif ($colordata[$i][1] > $threshold[$i][1]) {
 			$dark = 0;
 			last;
 		}  
