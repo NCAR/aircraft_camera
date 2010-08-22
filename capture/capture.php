@@ -1,5 +1,5 @@
 <?php
-
+	# Install on camera computer as /var/www/html/camera/capture.php
 
 	if (isset($_SERVER['HTTP_USER_AGENT']) && (strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== false)) {
 	  # This is for Internet Explorer, the browser that doesn't listen to HTTP standards.
