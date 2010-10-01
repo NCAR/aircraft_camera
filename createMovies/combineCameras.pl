@@ -29,6 +29,14 @@ use strict;
 # Bug in enddate extraction added Jun 17. Both end month and end minute were 
 # emn - fixed.
 
+# 2010 Sept 23 - JAG
+# Movie Date and Time range was only being calculated from netCDF file if netCDF 
+# data was included. Add ability to calc date/time from image filenames.
+
+# 2010 Oct 1 - JAG
+# Code sometimes dies mid processing. If startNum given on command line
+# recover by starting there.
+
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -59,6 +67,7 @@ my @knownCameras = ("Axis","Flea","Down_Flea");
 # Set defaults for variables
 my $annotationFont = "Courier-Bold";
 my $fontSize = "13";
+my $startNum = -1;
 
 # List possible keywords for use in ParamFile
 my %possible_keywords = ( # value = description, default
@@ -135,9 +144,11 @@ my $dataFile="./janine_dataFile_$startTime.asc";
 
 # Check for running on appropriate machine.
 my $annotatedImageDirectory;
-if (hostname() =~ m/gni/) {$annotatedImageDirectory = "/tmp/AnnotatedImages";}
-elsif (hostname() =~ m/bora/) {$annotatedImageDirectory = "./AnnotatedImages";}
-else {print "Must be run on BORA or GNI\n"; exit(1);}
+#if (hostname() =~ m/gni/) {$annotatedImageDirectory = "/tmp/AnnotatedImages";}
+#elsif (hostname() =~ m/bora/) {
+    $annotatedImageDirectory = "./AnnotatedImages";
+#}
+#else {print "Must be run on BORA or GNI\n"; exit(1);}
 
 
 # -------------------------------------------------------------------
@@ -146,6 +157,11 @@ else {print "Must be run on BORA or GNI\n"; exit(1);}
 my $keyref = {%possible_keywords};
 my %parameters = (); #empty hash to hold keywords from ParamFile
 my $keywords = \%parameters; #reference to keyword hash
+if ($ARGV[2]) {
+   $startNum = $ARGV[2];
+   print "START PROCESSING AT IMAGE NUMBER $startNum\n";
+}
+
 &get_keywords($ARGV[0],$ARGV[1],$keyref,$keywords);
 
 # -------------------------------------------------------------------
@@ -252,17 +268,19 @@ if ($keywords->{includeData} ne "yes") {
 $annotatedImageDirectory = $annotatedImageDirectory."_$flightNumber";
 # Delete old annotated images directory and create a new (empty) one.
 # Little error checking here right now, and could use FILE::PATH functions.
--d $annotatedImageDirectory and system "rm -r $annotatedImageDirectory";
-mkdir "$annotatedImageDirectory" or die "Couldn't create $annotatedImageDirectory directory!";
+if ($startNum == -1) {
+    -d $annotatedImageDirectory and system "rm -r $annotatedImageDirectory";
+    mkdir "$annotatedImageDirectory" or die "Couldn't create $annotatedImageDirectory directory!";
+}
 print "Annotated images will be stored in $annotatedImageDirectory\n";
 
 # --------------------------------------------------------------------
 #---------------------- Delete temporary files -----------------------
 # --------------------------------------------------------------------
 
-unlink $batchFile;
-unlink $headerDump;
-unlink $dataFile;
+#unlink $batchFile;
+#unlink $headerDump;
+#unlink $dataFile;
 
 # --------------------------------------------------------------------
 #---------------------- End of Initialization ------------------------
@@ -278,8 +296,17 @@ unlink $dataFile;
 
 # Find a matching time in the data file
 my $fileNum=0;
-foreach my $fileName (@jpegFiles) {	
+my $imageTime;
+foreach my $fileName (@jpegFiles) {
+        # Code sometimes dies mid processing. If startNum given on command line
+        # recover by starting there.
 	$fileNum++;		#track the number of image files processed
+
+        if ($fileNum <= $startNum) {
+            print "Skipping image $fileNum\n";
+            next;
+        }
+
 
 	# clear the images, set output attributes, then read and scale an image
 	@$outputImage = ();
@@ -316,9 +343,17 @@ foreach my $fileName (@jpegFiles) {
 	# doesn't include it.
 	# - Since the date is in the filename, flights that roll over to 
 	# UTC 000000 are still sorted properly.
-	my $imageTime=substr($fileName,-10,6);
+	$imageTime=substr($fileName,-10,6);
 	my $imageTime_withColons=substr($imageTime,0,2).':'.
 		substr($imageTime,2,2).':'.substr($imageTime,4,2);
+
+	# If not including netCDF data then determine image time from image names.
+	# Determine start time here and end time at end of loop.
+	if ($keywords->{includeData} ne "yes" && $fileNum == 1) {
+	    my $imageDate = substr($fileName,-17,6);
+	    $outputFileTimes = $imageDate.'.'.$imageTime;
+	}
+
 
 	print "image $fileNum/$numFiles: $fileName\n";
 
@@ -402,6 +437,13 @@ foreach my $fileName (@jpegFiles) {
 	my $outputImageName=sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
 	$outputImage->write($outputImageName);
 }
+
+# If not including netCDF data then determine image time from image names.
+# Determine end time here.
+if ($keywords->{includeData} ne "yes") {
+    $outputFileTimes = $outputFileTimes.'_'.$imageTime;
+}
+
 
 # --------------------------------------------------------------------
 #----------------------- Two pass MPEG encoding ----------------------
@@ -648,7 +690,7 @@ sub create_ascii_dataFile() {
 # Remove old flight data file if it exists, create new one with N2ASC.
 -e $dataFile and unlink $dataFile;
 print "\n****\nBegin running n2asc -b $batchFile\n";
-if (system "n2asc -b $batchFile") 
+if (system "./nc2asc -b $batchFile") 
 	{die "Couldn't create flight data file $dataFile"};
 print "\nn2asc completed\n****\n\n";
 }
