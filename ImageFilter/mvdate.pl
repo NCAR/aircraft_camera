@@ -27,7 +27,7 @@ if (@ARGV <= 0) {
 	Options:
 		-ext:jpg	Sets file extention
 		-v		Verbose (prints file operations)
-		-nolist		Does not display list of files to be removed before confirmation, does display # of files to be removed
+		-nolist		Does not display list of files to be moved before confirmation, does display # of files to be moved
 		-f		Force (Skips confimation and does not display list of dark images)
 		-r		Recusive directory search [NOT IMPLEMENTED]
 EOF
@@ -57,9 +57,9 @@ print "Reading directory: $dir[0]\n";
 opendir(DIR, "$dir[0]");
 our @files = readdir(DIR);
 close(DIR);
-print "Removing invalid files\n";
+print "Moving invalid files\n";
 #ignore files that dontt end in .$ext and or dont contain a date time string
-@files = grep(/.*\d{6,8}.\d{6}\.$ext/, @files);
+@files = grep(/.*\d{6,8}.\d{6}.*\.$ext/, @files);
 #make sure there are some files left
 if ($#files < 0) {print "$dir[0] does not conatin any .*\\d{6,8}.\\d{6}\\.$ext files!\n"; exit(1); }
 
@@ -67,7 +67,7 @@ if ($#files < 0) {print "$dir[0] does not conatin any .*\\d{6,8}.\\d{6}\\.$ext f
 @files = sort { lc($a) cmp lc($b) } @files;
 
 #@files = sort { lc($a) cmp lc($b) } @files;
-print "Removing Date Range: "; PrintDate(@{$date[0]}); print " To "; PrintDate(@{$date[1]}); print "\n";
+print "Moving Date Range: "; PrintDate(@{$date[0]}); print " To "; PrintDate(@{$date[1]}); print "\n";
 #Variable declarations
 my @filesToMove;
 
@@ -132,13 +132,13 @@ sub BatchMove
 	my $cont = "\n";
 	my @files1 = @_;
 	if ($force == 0) {
-		#print a list of files to be removed
+		#print a list of files to be moved
 		if ($listfiles) {
 			foreach my $file (@files1) {
-				print "Remove: $file\n";
+				print "Move: $file\n";
 			}
 		}
-		print "Total files to remove: " . ($#_+1) . " of " . ($#files+1) . "\n";
+		print "Total files to move: " . ($#_+1) . " of " . ($#files+1) . "\n";
 		
 		print "To continue press enter otherwise enter any value:";
 		#get user input (this will capture trailing \n)
@@ -151,7 +151,7 @@ sub BatchMove
 			mkdir("$dir[1]") or die "Unable to create directory $dir[1]\n $! \n";
 		}	
 		print "Moving images to temporary directory..\n";
-		#remove all files identified as dark
+		#move all files identified as dark
 		foreach my $file (@files1) {
 			if ($verbose) {print "Moving: $dir[0]/$file To $dir[1]/$file\n";}
 			rename("$dir[0]/$file","$dir[1]/$file") or die $!; #rename == move

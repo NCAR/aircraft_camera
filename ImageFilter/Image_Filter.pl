@@ -21,6 +21,8 @@
 # threshold brightness of images and avg std dev
 use strict;
 use Time::Local;
+use File::Path qw(mkpath);
+use Cwd 'abs_path';
 
 print "\n";
 #flags and defults
@@ -43,7 +45,7 @@ $threshold[1][1] = 15; #G if Standard Deviation is low image is mostly one color
 $threshold[2][1] = 18; #B if Standard Deviation is low image is mostly one color
 our $project = -1;
 our $flight = -1;
-our $expectedDiff = 1;
+our $expectedDiff = 10; #Actually 1, but any gap less than 10 seconds I dont care about
 our $speedstart = 25;
 our $speedstop = 80;
 
@@ -78,9 +80,10 @@ EOF
 else {
 	#Process command line arguments
 	foreach my $a (@ARGV) {
-		if ($a =~ m/-ext:(\S*)/) {$ext = $1;}
-		elsif ($a =~ m/-maxmean:(\d+)|(\d+)|(\d+)/) { $threshold[0][0] = $1; $threshold[0][1] = $2 ; $threshold[0][2] = $3 }
-		elsif ($a =~ m/-maxdev:(\d+)|(\d+)|(\d+)/) { $threshold[1][0] = $1; $threshold[1][1] = $2 ; $threshold[0][3] = $3 }
+		#print $a . "\n";
+	    	if ($a =~ m/-ext:(\S*)/) {$ext = $1;}
+		elsif ($a =~ m/-maxmean:(\d+)\|(\d+)\|(\d+)/) { $threshold[0][0] = $1; $threshold[0][1] = $2 ; $threshold[0][2] = $3 }
+		elsif ($a =~ m/-maxdev:(\d+)\|(\d+)\|(\d+)/) { $threshold[1][0] = $1; $threshold[1][1] = $2 ; $threshold[0][3] = $3 }
 		elsif ($a =~ m/-t:(\d+)/) { $expectedDiff = $1; }
 		elsif ($a =~ m/-proj:(.*)/) { $project = $1; }
 		elsif ($a =~ m/-fltno:(.*)/) { $flight = $1; }
@@ -92,12 +95,12 @@ else {
 		elsif ($a eq "-f") {$force = 1;}
 		elsif ($a eq "-r") { } #NOT IMPLEMENTED 
 		elsif ($a =~ m/-tdir:(.*)/) {} #NOT IMPLEMENTED
-		elsif ($a =~ m/-s:(\d+)/) {$speedhack = $1; }
+		elsif ($a =~ m/-s:(\d+)/) {$speedhack = $1; print "SpeedHack set\n";}
 		elsif ($a =~ m/-s%:(\d+)/) {} #NOT IMPLEMENTED
 		elsif ($a =~ m/-sstart:(\d+)/) { $speedstart = $1; }
 		elsif ($a =~ m/-sstop:(\d+)/) { $speedstop = $1; }
 		
-		elsif (-d $a) {$dir = $a;} #target dir
+		elsif (-d $a) {$dir = abs_path($a);} #target dir
 		elsif ($a eq "" || $a eq "\n") {} #For capturing stangeness
 		else {die "INVALID ARGUMENT: $a";}	
 	}
@@ -123,7 +126,8 @@ if ($checkCont) {
 	my $diff = 0;
 	my @gap;
 	for (my $i = 1; $i <= $#files; $i++) {
-		if (int($i/$#files*100 + 0.5) % 5 == 0) { print "\rScanning for discontinuity: " . int($i/($#files+1)*100 + 0.5) . "% Done"; }
+		my $p = -1;
+		if (int($i/($#files+1)*100) - $p > 0) { print "Scanning for discontinuity: " . int($i/($#files+1)*100) . "% Done\r"; $p++; }
 		if ($files[$i] ne "" && $files[$i-1] ne "") {
 			$diff = DateDiff(DateFromFile($files[$i]), DateFromFile($files[$i-1]));
 			if (($diff > $expectedDiff && $diff > 0) || $diff < 0) {
@@ -143,7 +147,7 @@ if ($checkCont) {
 			}
 		}
 	}
-	print "\rScanning for discontinuity: 100% Done\n"; 
+	print "Scanning for discontinuity: 100% Done\n"; 
 	if ($#gap > 0) {
 		for ($a = 0; $a <= $#gap; $a++) {
 			print "Time Gap: $gap[$a][0] -> $gap[$a][1] | $gap[$a][2]\n";
@@ -155,9 +159,9 @@ if ($checkCont) {
 }
 else
 {
-	print "\rScanning for discontinuity: SKIPPED\n"; 
+	print "Scanning for discontinuity: SKIPPED\n"; 
 }
-
+print "\n";
 our @date;
 #date store in @date as MM,DD,YYYY,hh,mm,ss
 if ($checkGnd) {
@@ -249,40 +253,42 @@ if ($checkGnd) {
 			if ($checkGnd) {
 				#now check each file to see if it is newer than takeoff or older than landing
 				for (my $i = 0; $i <= $#files; $i++) {
-					if (int($i/$#files*100) % 5  == 0) { print "\rScanning for ground images: " . int($i/$#files*100) . "% Done"; }
-					#print "\rScanning for ground images: " . int($i/($#files)*100 + .5) . "% Done";
+					my $p = -1;
+					if (int($i/$#files*100) - $p) { print "Scanning for ground images: " . int($i/$#files*100) . "% Done\r"; $p++ }
 					#if file time is older than landing time remove it
 					if (IsOlder(DateFromFile($files[$i]),@{$date[1]})) { push(@filesToRemove, $i);} 
 					#if file time is earlier than takeoff time remove it
 					if (IsOlder(@{$date[0]},DateFromFile($files[$i]))) { push(@filesToRemove, $i);}
 				}
-				print "\rScanning for ground images: 100% Done";
+				print "Scanning for ground images: 100% Done";
 				
-				if ($#filesToRemove+1 > 0) {print " (Ground Images Found!)\n"; Remove(@filesToRemove); @filesToRemove = ();}
+				if ($#filesToRemove+1 > 0) {print " (Ground Images Found)\n"; Remove("removed/ground",@filesToRemove); @filesToRemove = ();}
 				else { print " (No ground Images found)\n"; }
 			}
 		}
 		else
 		{
-			print "\rScanning for ground images: SKIPPED (Missing takeoff or landing time)\n"; 
+			print "Scanning for ground images: SKIPPED (Missing takeoff or landing time)\n"; 
 		}
 	}	
 	else {
 		print "Could not find netCDF file, skipping ground image removal.\n";
-		print "\rScanning for ground images: SKIPPED\n"; 	
+		print "Scanning for ground images: SKIPPED\n"; 	
 	}
 }
-else { print "\rScanning for ground images: SKIPPED\n"; } 
-
+else { print "Scanning for ground images: SKIPPED\n"; } 
+print "\n";
+#print $#files+1 . "\n";
+#print $speedhack . "\n";
 if ($checkDark) {
 	#dark checking variable declarations
 	my $speeddark = 0; #this will be set to 1 if a dark file is encountered
 	my @speedHist; #list of files skipped in the last iteration
 	my @filesToRemove; #list of files idetified as dark
 
-	print "Scanning for dark images: 0% Done";
 	for (my $i = 0; $i <= $#files; $i++) {
-		if (int($i/$#files*100) % 5  == 0) { print "\rScanning for dark images: " . int($i/$#files*100) . "% Done"; }
+		my $p = -1;
+		if (int($i/$#files*100) - $p) { print "Scanning for dark images: " . int($i/($#files+1)*100) . "% Done\r"; $p++ }
 		#skip files with the wrong ext Shoulden't be nessesary but just in case
 		if ($files[$i] =~ m/.*\.$ext/) {
 			#always true if $speedhack is 0, other wise skips $speedhack # of files and checks the very last file
@@ -320,15 +326,15 @@ if ($checkDark) {
 			}
 		}
 	}
-	print "\rScanning for dark images: 100% done\n";
+	print "Scanning for dark images: 100% done";
 	if ($#filesToRemove+1 > 0) {
-		print "Dark images found!\n";
-		Remove(@filesToRemove);
+		print " (Dark images found)\n";
+		Remove("removed", @filesToRemove);
 		@filesToRemove = ();
 	}
-	else {print "No Dark images found!\n";}
+	else {print " (No Dark images found)\n";}
 }
-else { print "\rScanning for dark images: SKIPPED\n"; }
+else { print "Scanning for dark images: SKIPPED\n"; }
 
 
 
@@ -396,18 +402,19 @@ sub IsOlder
 sub Remove
 {
 	my $cont = "\n";
+	my $subdir = shift;
 	my @indexes = @_;
 	if ($force == 0) {
 		#print a list of files to be removed
-		if ($listfiles) {
-			foreach my $i (@indexes) {
-				print "Remove: $files[$i]\n";
-			}
-		}
+		#if ($listfiles) {
+		#	foreach my $i (@indexes) {
+		#		print "Remove: $files[$i]\n";
+		#	}
+		#}
 		print "Total files to remove: " . ($#_+1) . " of " . ($#files+1) . "\n";
 		
-		print "Takeoff: "; PrintDate(@{$date[0]}); print " | "; PrintDate(DateFromFile($files[0])); print "\n";
-		print "Landing: "; PrintDate(@{$date[1]}); print " | "; PrintDate(DateFromFile($files[$#files])); print "\n";
+		#print "Takeoff: "; PrintDate(@{$date[0]}); print " | "; PrintDate(DateFromFile($files[0])); print "\n";
+		#print "Landing: "; PrintDate(@{$date[1]}); print " | "; PrintDate(DateFromFile($files[$#files])); print "\n";
 
 		print "To continue press enter otherwise enter any value:";
 		#get user input (this will capture trailing \n)
@@ -415,19 +422,18 @@ sub Remove
 	}
 
 	if ($cont eq "\n") {
-		print "\nCreating temporary directory..\n";
-		mkdir("$dir/removed/");	
-		print "Moving images to temporary directory..\n";
+		print "\r\r";
+		unless (-d "$dir/$subdir") {print "\nMaking dir $dir/$subdir\n"; mkpath("$dir/$subdir") || die "Failed: mkdir -p $dir/$subdir";}	
+		print "Moving images to $dir/$subdir\n";
 		#remove all files identified as dark
 		foreach my $i (@indexes) {
-			if ($verbose) {print "Moving: $dir/$files[$i] To $dir/removed/$files[$i]\n";}
-			rename("$dir/$files[$i]","$dir/removed/$files[$i]") or die "$dir/$files[$i] | $i: $!"; #rename == move
+			if ($verbose) {print "Moving: $dir/$files[$i] To $dir/$subdir/$files[$i]\n";}
+			rename("$dir/$files[$i]","$dir/$subdir/$files[$i]") or die "Failed: mv $dir/$files[$i] $dir/$subdir/$files[$i]\n     $!"; #rename == move
 			$files[$i] = "REMOVE ME";
 		}
 		@files = grep(/.*\.$ext/, @files);
 	}
 }
-
 sub IsDark
 {
 	my @colordata;
@@ -451,12 +457,26 @@ sub IsDark
 		elsif ($_ =~ m/\s*(?:B|b)lue:\s*/) {
 			$colorindex = 2
 		}
+		elsif ($_ =~ m/\s*(?:G|g)ray:\s*/) { #Apparently if an image is black enough it is converted to gray scale...
+			$colorindex = 3
+		}
 		elsif ($_ =~ m/\s*(?:M|m)ean:\s*(\d*\.?\d*)\s*(\s*\(\d*\.\d*\))?\s*/) {
-			$colordata[$colorindex][0] = $1;
+			if ($colorindex == 3){
+				$colordata[0][0] = $1;
+				$colordata[1][0] = $1;
+				$colordata[2][0] = $1;
+			}
+			else{ $colordata[$colorindex][0] = $1; }
 		}
 		elsif ($_ =~ m/\s*(?:S|s)tandard (?:D|d)eviation:\s*(\d*\.?\d*)\s*(\s*\(\d*\.\d*\))?\s*/) {
-			$colordata[$colorindex][1] = $1;
+			if ($colorindex == 3){
+				$colordata[0][1] = $1;
+				$colordata[1][1] = $1;
+				$colordata[2][1] = $1;
+			}
+			else{ $colordata[$colorindex][1] = $1; }
 		}
+		elsif ($_ =~ m/Resolution/) { last; }
 	}	
 	close DATA;
 	
