@@ -13,7 +13,7 @@ logit="logger -t capture_init -s -p local1.notice"         # command to send mes
 start() {
 
 	# make sure no other capture process is running 
-	if ! ps h -C $capture > /dev/null
+	if ! ps h -C capture_monitor.sh > /dev/null
 	then
 		#start capture program
 		($capture -c $CONF -f $LOC -d $dbHOST -w) &
@@ -38,10 +38,11 @@ start() {
 stop() {
 
 	#send ctrl-c signal to allow program to clean up
-	ps h -C capture > /dev/null && killall -HUP capture
+ 	killall -HUP $capture
+ 	killall -9 $capture
 
 	#kill monitor script
-	ps h -C capture_monitor.sh > /dev/null && killall capture_monitor.sh
+ 	killall capture_monitor.sh
 
 	$logit "stopped cams"
 }

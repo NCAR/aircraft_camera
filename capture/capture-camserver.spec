@@ -1,6 +1,6 @@
 Summary: ieee1394 camera image capture/archive program
 Name: capture-camserver
-Version: 0.6
+Version: 0.7
 Release: 1
 Group: Applications/Text
 Source: %{name}-%{version}.tar.bz2
@@ -72,6 +72,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0774,ads,apache) /usr/sbin/capture_reset_bus
 
 %changelog
+* Thu Jul 29 2011 <wasinger@ucar.edu> 0.5-1
+- fixed /etc/init.d/capture:
+-   starts were not detecting previous starts
+-   stops were not stopping
+
 * Thu Aug 6 2009 <dlagreca@ucar.edu> 0.5-1
 - added the capture_reset_bus and capture_monitor portions
 
