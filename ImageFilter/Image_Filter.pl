@@ -11,6 +11,7 @@
 # Date time caparisons are now done using Time::Local (Add support for time compariton over years/months)
 # No longer propmts the user for EVERY discontinuity in time, (instead it lists them all at once and asks the user)
 #Version 1.4
+# If netCDF file does not exist in Prod_Data, look in /scr/raf/local_data. JAA 8/24/2011
 # TODO
 
 #ToDo:
@@ -183,6 +184,15 @@ if ($checkGnd) {
 	}
 	#location of netCDF file
 	my $netCDF = "/scr/raf/Prod_Data/$project/$project$flight.nc";
+	# Final production data will be in Prod_Data. However, if the production files have not
+	# yet been generated, use the field-phase files. We are only accessing the aircraft
+	# speed to determine if the camera is operating on the ground and strip ground images.
+	# This should not change enough from field- to production- files to make a difference.
+	# This if statement allows us to create preliminary movies before the final .nc files
+	# exist. - JAA 8/24/2011
+	unless (-e $netCDF) {
+	    $netCDF = "/scr/raf/local_data/$project$flight.nc";
+	}
 	
 	if (-e $netCDF) { #if the netCDF file is found
 		#the flt_time script is kinda basic.. it will not specify weather it found an increase or decrase in speed that breached its threshold
