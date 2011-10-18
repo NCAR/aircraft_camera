@@ -212,7 +212,8 @@ int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t
 			syslog(LOG_WARNING,"no settings for camera: %llx in file: %s,using defaults.",
 				list->ids[i].guid, conf);
 		}
-		strcpy(camArray[i]->flNum, flNum);
+		strncpy(camArray[i]->flNum, flNum, MAX_FLNUM_LEN);
+                camArray[i]->flNum[MAX_FLNUM_LEN-1] = '\0';
 	}
 
 	/* create image directory structure */
