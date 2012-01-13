@@ -104,9 +104,9 @@ my ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes);
 # -------------------------------------------------------------------
 
 #if no arguments or argument is "-h", print help text and exit.
-if ( (scalar(@ARGV) != 2) || ($ARGV[0] eq "-h") ) {
+if ( (scalar(@ARGV) < 2) || (scalar(@ARGV) > 3)  || ($ARGV[0] eq "-h") ) {
 	print "\n Perl script to generate annotated movies from images\n";
-	print " USAGE: $0  parameterFileName <flight eg. rf01>\n";
+	print " USAGE: $0  parameterFileName <flight eg. rf01> [startnum]\n";
 	print " MUST BE RUN ON BORA or GNI!!!\n\n";
 	print "\n";
 	print " The parameter file is an ascii file containing the following";
@@ -123,7 +123,6 @@ if ( (scalar(@ARGV) != 2) || ($ARGV[0] eq "-h") ) {
 }
 
 # Initialize image objects. 
-# JAA
 my $inputImage = Image::Magick->new();		# Forward image read in.
 my $Image = Image::Magick->new();		# Downward image read in.
 my $outputImage = Image::Magick->new();		# Image to be written out.
@@ -239,6 +238,7 @@ if ($keywords->{includeData} eq "yes") {
     #Write flight level data variables given in ParamFile to the label image.
     (undef,$outputHeight) = split(/x/,$keywords->{outputResolution});
     $outputWidth = $keywords->{outputWidth};
+    if ($keywords->{numCameras} > 1) {$outputHeight = $outputHeight/2;}
     &write_vars2labelImage($labelImage,$headerText,$theText,$outputHeight,$outputWidth);
 }
 
@@ -454,11 +454,11 @@ my $mp4BitRate = $keywords->{mp4BitRate};;
 my $outputFilename = "$flightNumber.$outputFileTimes.mp4";
 # First ffmpeg pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 1 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
-my $command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+my $command = "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
 if (system "$command") { die "Unable to create MPEG file $outputFilename, pass 1 using command $command"}; 
 # Second pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 2 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
-$command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+$command = "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
 if (system "$command") {die "Unable to create MPEG file $outputFilename, pass 2 using command $command"};
 
 
@@ -506,19 +506,26 @@ sub get_camera_image() {
 	    $fileName =~ s/_/-/;
 	}
 	
-	printf "$Directory/$fileName";
+	# Try adding _d to filename before .jpg and matching that.
+	if (! -e "$Directory/$fileName") {
+	    $fileName =~ s/.jpg/_?.jpg/;
+	}
 
 	#  If still doesn't exist, warn user and continue.
-	if (! -e "$Directory/$fileName") {
+	#if (! -e "$Directory/$fileName")
+	my @files = glob("$Directory/$fileName");
+	if (scalar(@files) == 0) {
+	    printf "$Directory/$fileName";
 	    print " not found!\n";
 	} else {
+	    $fileName  = $files[0];
+	    printf "$fileName";
 	    print "\n";
 	}
 
 	#Read in current image, or if none, set to white.
-        $Image->ReadImage("$Directory/*$fileName") 
+        $Image->ReadImage("$fileName") 
 	    or $Image->ReadImage('xc:white');
-
 
     	return ($Image);
     }
@@ -690,7 +697,7 @@ sub create_ascii_dataFile() {
 # Remove old flight data file if it exists, create new one with N2ASC.
 -e $dataFile and unlink $dataFile;
 print "\n****\nBegin running n2asc -b $batchFile\n";
-if (system "./nc2asc -b $batchFile") 
+if (system "nc2asc -b $batchFile") 
 	{die "Couldn't create flight data file $dataFile"};
 print "\nn2asc completed\n****\n\n";
 }
