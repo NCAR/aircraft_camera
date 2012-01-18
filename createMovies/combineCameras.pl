@@ -37,6 +37,8 @@ use strict;
 # Code sometimes dies mid processing. If startNum given on command line
 # recover by starting there.
 
+# 2012 Jan 18 - JAA (= JAG)
+# If data is missing, continue on without including data.
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -296,6 +298,7 @@ print "Annotated images will be stored in $annotatedImageDirectory\n";
 
 # Find a matching time in the data file
 my $fileNum=0;
+my $haveData = 1;
 my $imageTime;
 foreach my $fileName (@jpegFiles) {
         # Code sometimes dies mid processing. If startNum given on command line
@@ -392,18 +395,17 @@ foreach my $fileName (@jpegFiles) {
 	# the netCDF file. This is a safe assumption, especially with production
 	# data. BUT the first image must be equal to or later than the first 
 	# data point.
-        if ($keywords->{includeData} eq "yes") {
+	if ($keywords->{includeData} ne "yes" && $haveData == 1) {
 	    while (substr($flightData[0],11,8) ne $imageTime_withColons)  {
 #	        print "M";	# Can count 'M's to find out how many images were 
 	        		# missing.
 	        shift(@flightData);
 		if (scalar(@flightData) == 0) {
-		    die "End of data file reached searching for ".
+		    print "End of data file reached searching for ".
 		        "$imageTime_withColons";
 
-			# If data is missing, the program exits. Should have 
-			# this continue to next image.
-			exit;	
+			# If data is missing, continue on without including data.
+		        $haveData=0;
 		}
 	    }
 	
