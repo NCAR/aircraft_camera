@@ -395,7 +395,8 @@ foreach my $fileName (@jpegFiles) {
 	# the netCDF file. This is a safe assumption, especially with production
 	# data. BUT the first image must be equal to or later than the first 
 	# data point.
-	if ($keywords->{includeData} ne "yes" && $haveData == 1) {
+	print $haveData."\n";
+	if ($keywords->{includeData} eq "yes" && $haveData == 1) {
 	    while (substr($flightData[0],11,8) ne $imageTime_withColons)  {
 #	        print "M";	# Can count 'M's to find out how many images were 
 	        		# missing.
