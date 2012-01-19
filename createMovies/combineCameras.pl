@@ -395,7 +395,6 @@ foreach my $fileName (@jpegFiles) {
 	# the netCDF file. This is a safe assumption, especially with production
 	# data. BUT the first image must be equal to or later than the first 
 	# data point.
-	print $haveData."\n";
 	if ($keywords->{includeData} eq "yes" && $haveData == 1) {
 	    while (substr($flightData[0],11,8) ne $imageTime_withColons)  {
 #	        print "M";	# Can count 'M's to find out how many images were 
@@ -403,10 +402,11 @@ foreach my $fileName (@jpegFiles) {
 	        shift(@flightData);
 		if (scalar(@flightData) == 0) {
 		    print "End of data file reached searching for ".
-		        "$imageTime_withColons";
+		        "$imageTime_withColons\n";
 
 			# If data is missing, continue on without including data.
 		        $haveData=0;
+			last;
 		}
 	    }
 	
@@ -458,10 +458,12 @@ my $outputFilename = "$flightNumber.$outputFileTimes.mp4";
 # First ffmpeg pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 1 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
 my $command = "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+print "$command\n";
 if (system "$command") { die "Unable to create MPEG file $outputFilename, pass 1 using command $command"}; 
 # Second pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 2 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
 $command = "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+print "$command\n";
 if (system "$command") {die "Unable to create MPEG file $outputFilename, pass 2 using command $command"};
 
 
