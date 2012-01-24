@@ -39,6 +39,7 @@ stop() {
 
 	#send ctrl-c signal to allow program to clean up
  	killall -HUP $capture
+	sleep 1
  	killall -9 $capture
 
 	#kill monitor script
