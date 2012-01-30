@@ -154,7 +154,8 @@ char *trimWhiteSpace(char *input) {
 
 	int i=0;
 	char c, d;
-	while (c = input[i]){
+	while ( (c = input[i]) )
+	{
 		if ((c == ' ' || c == '\n') && (d == ' ' || d == '\n')){
 			input[i-1] = '\0';
 			return input;

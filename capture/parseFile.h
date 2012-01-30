@@ -30,7 +30,7 @@ typedef struct {
 	char ppm;			//option for uncompressed PPM output
 	int quality; 			//if format is 'jpg', specify the compression quality
 	char flNum[MAX_FLNUM_LEN];	//number of the flight on which the image was taken
-	int minGain, maxGain;		//min/max gain values used to calculate percentage
+	uint32_t minGain, maxGain;	//min/max gain values used to calculate percentage
 } camConf_t;
 
 char *strLower(char* s);

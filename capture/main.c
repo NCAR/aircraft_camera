@@ -32,7 +32,7 @@
 
 void wait_for_camera(dc1394_t *d);
 int bus_count_changed(dc1394_t *d, int numCams);
-int cleanup_d(camConf_t ***, int, status_t *);
+void cleanup_d(camConf_t ***, int, status_t *);
 int reinitialize_d(char *, dc1394_t *, camConf_t ***, status_t *, int *, PGconn *, char *, char *);
 void finishUp();
 void getTime(char *, char *);
@@ -157,7 +157,8 @@ int bus_count_changed(dc1394_t *d, int numCams) {
 
 }
 
-void wait_for_camera(dc1394_t *d) {
+void wait_for_camera(dc1394_t *d)
+{
 	syslog(LOG_NOTICE, "waiting for a camera to be detected on the bus");
 
 	while (!interrupted){
@@ -170,19 +171,19 @@ void wait_for_camera(dc1394_t *d) {
 	}
 }
 
-int cleanup_d(camConf_t ***camArray_ptr, int camCount, status_t *statMC) {
-
+void cleanup_d(camConf_t ***camArray_ptr, int camCount, status_t *statMC)
+{
 	camConf_t **camArray = *camArray_ptr;
 	int i;
 	for (i=0; i<camCount; i++) free(camArray[i]);
 
-	free(camArray);					//release array of pointers
+	free(camArray);				//release array of pointers
 	multicast_clean_up(statMC);		//send final packet and release structs
 
 }
 
-int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t *statMC, int *useDB, PGconn *conn, char *conf, char *prefix) {
-
+int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t *statMC, int *useDB, PGconn *conn, char *conf, char *prefix)
+{
 	int numCams=0, i;
 	char directory[100];
 	camConf_t **camArray;

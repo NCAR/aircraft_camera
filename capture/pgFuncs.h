@@ -14,5 +14,6 @@ int initRow(PGconn*, camConf_t**, int);
 int updatePostgres(PGconn*, const char*, int); 
 int getDbFlNum(PGconn*, char**);
 char *trimWhiteSpace(char*);
+char *defaults(char **, char *);
 
 #endif

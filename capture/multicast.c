@@ -36,6 +36,18 @@ void multicast_status_init(status_t *status, camConf_t **camArray, int numCams) 
 	return;
 }
 
+void multicast_send_final(status_t *status) {
+/* This function sends the final status multicast packet before the program terminates.
+	It sets health to 0, because the program is ending. Then it sends a packet with
+	'shut down' as the message. 
+*/
+	char *pkt;
+	pkt = malloc(sizeof(char) * (strlen(PACKET_BASE) + strlen(status->clock) + 11));
+	sprintf(pkt, PACKET_BASE, status->clock, 0, "shut down"); 
+	multicast_send_packet(pkt, MULTICAST_GROUP, MULTICAST_PORT);
+	free(pkt);
+}
+
 void multicast_clean_up(status_t *status){
 /* This function sends a final multicast message, then cleans up memory that
 	was allocated by multicast_status_init()
@@ -57,23 +69,11 @@ void multicast_clean_up(status_t *status){
 	return;
 }
 
-int multicast_send_final(status_t *status) {
-/* This function sends the final status multicast packet before the program terminates.
-	It sets health to 0, because the program is ending. Then it sends a packet with
-	'shut down' as the message. 
-*/
-	char *pkt;
-	pkt = malloc(sizeof(char) * (strlen(PACKET_BASE) + strlen(status->clock) + 11));
-	sprintf(pkt, PACKET_BASE, status->clock, 0, "shut down"); 
-	multicast_send_packet(pkt, MULTICAST_GROUP, MULTICAST_PORT);
-	free(pkt);
-}
-
 int multicast_send_status(status_t *status) {
 /* This function takes the data from a status_t struct and arranges it into the 
 	standard multicast packet form described here: http://wiki.eol.ucar.edu/sew/Aircraft/Handbook
 */	
-	char *html, *rows, *packet;
+	char *rows, *packet;
 	char row[500];
 	int i;
 
