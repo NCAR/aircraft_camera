@@ -28,7 +28,7 @@ int setup_cams(camConf_t **camArray, int nCams, dc1394_t *d){
 		camera = dc1394_camera_new (d, camConfig->guid);
 		if (!camera) {
 			dc1394_log_error("Failed to initialize camera with guid %llx",
-							 camera->guid);
+							 camConfig->guid);
 			return 0;
 		}
 
@@ -71,7 +71,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 	char full_file_name[256];
 	unsigned char *reducedFrame;
 	int numPix, i, totalSize=0;
-	unsigned gain, minGain, maxGain;
+	unsigned gain;
 	struct stat st;
 	dc1394camera_t *camera;
 	dc1394video_frame_t *frame=NULL;
@@ -80,7 +80,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 	camera = dc1394_camera_new (d, camConfig->guid);
 	if (!camera) {
 		dc1394_log_error("Failed to initialize camera with guid %llx",
-						 camera->guid);
+						 camConfig->guid);
 		return 1;
 	}
 //	printf("initialized camera GUID %"PRIx64"\n", camera->guid);
