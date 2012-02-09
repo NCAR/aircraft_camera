@@ -114,21 +114,35 @@ int initRow(PGconn * conn, camConf_t **camArray, int numCams){
 	return 1;
 }
 
-int updatePostgres(PGconn *conn, const char * img_name, int camNum) {
-/* This function updates the database with the newest image, etc */
+/* This function updates the database with the newest image, etc
+ */
+int updatePostgres(PGconn *conn, const char * img_name, int camNum)
+{
 
 	char command[100];
 	PGresult *res;
 
 	sprintf(command, "UPDATE camera SET latest[%d] ='%s',last_update=current_timestamp",
 			 camNum+1, img_name);
-	res = PQexec(conn, command);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
+
+	while ( (res = PQgetResult(conn)) )
+	{
+		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+			syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
+		}
 		PQclear(res);
-	} //else printf("table updated\n"); 
+	}
+
+	res = PQsendQuery(conn, command);
 	
-	PQclear(res);
+	while ( (res = PQgetResult(conn)) )
+	{
+		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+			syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
+		}
+		PQclear(res);
+	}
+
 	return 1;
 }
 
