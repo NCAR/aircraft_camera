@@ -39,6 +39,9 @@ use strict;
 
 # 2012 Jan 18 - JAA (= JAG)
 # If data is missing, continue on without including data.
+
+# 2012Feb 10 - JAA
+# Add new param movieDirectory to specify where to output movies.
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -77,6 +80,7 @@ my %possible_keywords = ( # value = description, default
     "netcdfFile" => ("can use #### to indicate flight, e.g. rf01"),
     "cameraName" => ("knownCameras"),
     "imageDirectory" => ("can use #### to indicate flight, e.g. rf01"),
+    "movieDirectory" => ("location to write annotated images and final movies"),
     "overlayImageTime" => ("yes or no"),
     "outputResolution" => ("size of entire image in pixels, e.g. num x num"),
     "outputWidth" => ("Width of data portion of image; default = 200"),
@@ -143,14 +147,7 @@ my $headerDump="./janine_headerDump_$startTime"; #Tempfile to dump netcdf header
 my $batchFile="./janine_batchFile_$startTime";
 my $dataFile="./janine_dataFile_$startTime.asc";
 
-# Check for running on appropriate machine.
 my $annotatedImageDirectory;
-#if (hostname() =~ m/gni/) {$annotatedImageDirectory = "/tmp/AnnotatedImages";}
-#elsif (hostname() =~ m/bora/) {
-    $annotatedImageDirectory = "./AnnotatedImages";
-#}
-#else {print "Must be run on BORA or GNI\n"; exit(1);}
-
 
 # -------------------------------------------------------------------
 # Get annotation parameters
@@ -267,7 +264,12 @@ if ($keywords->{includeData} ne "yes") {
     $flightNumber =~ s/^.*flight_number_(....).*/$1/;
 }
 
-$annotatedImageDirectory = $annotatedImageDirectory."_$flightNumber";
+# Set the output dir for annotated images and final movies
+!$keywords->{movieDirectory} 
+    and die "movieDirectory must be identified in the parameters file! \n";
+
+$annotatedImageDirectory = 
+    $keywords->{movieDirectory}."/AnnotatedImages_$flightNumber";
 # Delete old annotated images directory and create a new (empty) one.
 # Little error checking here right now, and could use FILE::PATH functions.
 if ($startNum == -1) {
@@ -395,28 +397,37 @@ foreach my $fileName (@jpegFiles) {
 	# the netCDF file. This is a safe assumption, especially with production
 	# data. BUT the first image must be equal to or later than the first 
 	# data point.
-	if ($keywords->{includeData} eq "yes" && $haveData == 1) {
-	    while (substr($flightData[0],11,8) ne $imageTime_withColons)  {
+	$haveData=1;
+	if ($keywords->{includeData} eq "yes") {
+	    my $dataTime = substr($flightData[0],11,8);
+	    $dataTime =~ s/://g;
+            if ($dataTime > $imageTime) {$haveData = 0;}
+	    while ($dataTime < $imageTime)  {
 #	        print "M";	# Can count 'M's to find out how many images were 
 	        		# missing.
 	        shift(@flightData);
+	        $dataTime = substr($flightData[0],11,8);
+	        $dataTime =~ s/://g;
 		if (scalar(@flightData) == 0) {
 		    print "End of data file reached searching for ".
 		        "$imageTime_withColons\n";
 
 			# If data is missing, continue on without including data.
-		        $haveData=0;
+			$haveData=0;
+			exit(1);
 			last;
 		}
 	    }
 	
 	    # Create the data string.
-	    my @dataItems = split(',',shift(@flightData));
 	    $theText = '';
-	    foreach my $value (@dataItems) { 
-		$theText=$theText.sprintf("%s\n", $value);
-	    }
+	    if ($haveData == 1) {
+	        my @dataItems = split(',',shift(@flightData));
+	        foreach my $value (@dataItems) { 
+		    $theText=$theText.sprintf("%s\n", $value);
+	        }
 #	    chomp $theText;		# Remove final newline.
+	    }
 	
 	    # Initialize image used for variable values.
 	    $valueImage->Set( size=>"${outputWidth}x$outputHeight");
@@ -457,12 +468,12 @@ my $mp4BitRate = $keywords->{mp4BitRate};;
 my $outputFilename = "$flightNumber.$outputFileTimes.mp4";
 # First ffmpeg pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 1 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
-my $command = "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+my $command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{netcdfFile}."/$outputFilename";
 print "$command\n";
 if (system "$command") { die "Unable to create MPEG file $outputFilename, pass 1 using command $command"}; 
 # Second pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 2 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
-$command = "ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ./$outputFilename";
+$command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{netcdfFile}."/$outputFilename";
 print "$command\n";
 if (system "$command") {die "Unable to create MPEG file $outputFilename, pass 2 using command $command"};
 
