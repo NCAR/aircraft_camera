@@ -143,9 +143,9 @@ my $valueImage = Image::Magick->new();		# Image of variable values.
 my $startTime = time();
 
 # Hardcoded file names.
-my $headerDump="./janine_headerDump_$startTime"; #Tempfile to dump netcdf header
-my $batchFile="./janine_batchFile_$startTime";
-my $dataFile="./janine_dataFile_$startTime.asc";
+my $headerDump="./headerDump_$startTime"; #Tempfile to dump netcdf header
+my $batchFile="./batchFile_$startTime";
+my $dataFile="./dataFile_$startTime.asc";
 
 my $annotatedImageDirectory;
 
