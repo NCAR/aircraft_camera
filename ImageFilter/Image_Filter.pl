@@ -234,8 +234,8 @@ if ($checkGnd) {
 			#also this will filter out multiple flights in once netcdf file
 			
 			#print out takeoff | first file date and landing | last file date
-			print "Takeoff: "; PrintDate(@{$date[0]}); print " | "; PrintDate(DateFromFile($files[0])); print "\n";
-			print "Landing: "; PrintDate(@{$date[1]}); print " | "; PrintDate(DateFromFile($files[$#files])); print "\n";
+			print PrintDate(@{$date[0]}); print " | "; PrintDate(DateFromFile($files[0])); print "\n";
+			print PrintDate(@{$date[1]}); print " | "; PrintDate(DateFromFile($files[$#files])); print "\n";
 			
 			#Quick sanity check
 			if (IsOlder(DateFromFile($files[$#files]), DateFromFile($files[0]))) {
