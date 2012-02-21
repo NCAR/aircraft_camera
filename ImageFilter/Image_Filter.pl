@@ -12,7 +12,8 @@
 # No longer propmts the user for EVERY discontinuity in time, (instead it lists them all at once and asks the user)
 #Version 1.4
 # If netCDF file does not exist in Prod_Data, look in /scr/raf/local_data. JAA 8/24/2011
-# TODO
+#Version 1.5
+# Change fixed directories to use RAF env variables.  $DATA_DIR & $RAW_DATA_DIR.
 
 #ToDo:
 # Get netCDF info from FULL dirname (easiest to just convert a valid diretory to its full name at start of script)
@@ -58,21 +59,32 @@ if (@ARGV <= 0) {
 
 	Options:
 		-ext:jpg	Sets file extention (Default: jpg)
-		-maxmean:R|G|B	Sets maximum average pixel value (per color) (Default:35|35|55) {Range: 0-255}
-		-maxdev:R|G|B	Sets maximum pixel value standard deviation (per color) (Default:15|15|15) {Range: 0-255}
-		-t:##		Time in seconds between image files (Default:1) {Used to check consistency}
-		-proj:PLOWS	Sets project (Not needed if TARGET_DIR if of form */Raw_Data/<Project>/*/flight_number_<flightno>/* )
-		-fltno:ff01	Sets flight number (Not needed if TARGET_DIR if of form */Raw_Data/<Project>/*/flight_number_<flightno>/* )
+		-maxmean:R|G|B	Sets maximum average pixel value (per color)
+				(Default:35|35|55) {Range: 0-255}
+		-maxdev:R|G|B	Sets maximum pixel value standard deviation (per color)
+				(Default:15|15|15) {Range: 0-255}
+		-t:##		Time in seconds between image files
+				(Default:1) {Used to check consistency}
+		-proj:PLOWS	Sets project (Not needed if TARGET_DIR if of form
+				*/Raw_Data/<Project>/*/flight_number_<flightno>/* )
+		-fltno:ff01	Sets flight number (Not needed if TARGET_DIR if of form
+				*/Raw_Data/<Project>/*/flight_number_<flightno>/* )
 		-skipcont	Skips continuity check
-		-skipdark	Skips dark image check/removal and removed only ground images (based on flt_time script)
+		-skipdark	Skips dark image check/removal and removed only ground images
+				(based on flt_time script)
 		-skipgnd	Skips ground image check/removal
 		-v		Verbose (prints file operations)
-		-nolist		Does not display list of files to be removed before confirmation, does display # of files to be removed
+		-nolist		Does not display list of files to be removed before confirmation,
+				does display # of files to be removed
 		-f		Force (Skips confimation and does not display list of dark images)
-		-r		PERMANATLY REMOVE (normally dark images are moded to target_DIR/removed/) [NOT YET IMPLEMENTED]
-		-tdir:removed	Sets name of subdir that dark images are moved to (Default: removed) [NOT YET IMPLEMENTED]
-		-s:##		File skipping, Checks every ## files and assumes the images inbetween based on the images checked (Default: 0) {Range: 0-inf}
-		-s%:##		Sets file skipping to a percentage of total files {Range: 0-100} [NOT YET IMPLEMENTED]
+		-r		PERMANATLY REMOVE (normally dark images are moded to
+				target_DIR/removed/) [NOT YET IMPLEMENTED]
+		-tdir:removed	Sets name of subdir that dark images are moved to
+				(Default: removed) [NOT YET IMPLEMENTED]
+		-s:##		File skipping, Checks every ## files and assumes the images
+				inbetween based on the images checked (Default: 0) {Range: 0-inf}
+		-s%:##		Sets file skipping to a percentage of total files
+				{Range: 0-100} [NOT YET IMPLEMENTED]
 		-sstart:##	Sets threshold speed for flt_time to be checked first (Default: 25)
 		-sstop:##	Sets threshold speed for flt_time to be checked last (Default: 80)
 EOF
@@ -170,7 +182,7 @@ if ($checkGnd) {
 	#my @date;
 	my $speed = $speedstart;
 	my $count = 0;
-	#if project was not given try to get it out of the directory patch
+	#if project was not given try to get it out of the directory path
 	if ($project == -1) {
 		$dir =~ m/\/Raw_Data\/(.*?)\//;
 		$project = $1;
@@ -191,13 +203,14 @@ if ($checkGnd) {
 	# This if statement allows us to create preliminary movies before the final .nc files
 	# exist. - JAA 8/24/2011
 	unless (-e $netCDF) {
-	    $netCDF = "/scr/raf/local_data/$project$flight.nc";
+	    $netCDF = "${DATA_DIR}/$project$flight.nc";
 	}
 	
 	if (-e $netCDF) { #if the netCDF file is found
-		#the flt_time script is kinda basic.. it will not specify weather it found an increase or decrase in speed that breached its threshold
-		#Also it will report only 1 time if it only finds one crossing
-		#so we need to ajust the speed it uses as a threshold untill it gives us some data that makes some sense
+		#the flt_time script is kinda basic.. it will not specify whether it found
+		#an increase or decrase in speed that breached its threshold.  Also it will
+		#report only 1 time if it only finds one crossing so we need to ajust the
+		#speed it uses as a threshold untill it gives us some data that makes some sense
 		while ($#date+1 != 2 && $speed <= $speedstop ) { 
 			@date = ();
 			#run flt_time scrpt and pipe the output into perl
@@ -220,8 +233,10 @@ if ($checkGnd) {
 			}
 			close(DATA);
 			
-			#Some times the flt_time script returns dates that are mere seconds apart probably to so skipping on takeoff/landing
-			#If the takeoff and landing times are less than 10 min apart they are not useful, empty @date so the while loop continues
+			#Sometimes the flt_time script returns dates that are mere seconds
+			#apart probably to so skipping on takeoff/landing If the takeoff
+			#and landing times are less than 10 min apart they are not useful,
+			#empty @date so the while loop continues
 			if ($#date+1 == 2 && DateDiff(@{$date[1]}, @{$date[0]}) < (10*60)) { @date = (); }
 			
 			$speed++;
@@ -229,9 +244,9 @@ if ($checkGnd) {
 		}
 		
 		if ($#date+1 == 2) { 
-			#unfortionatly flt_time only outputs one date/time and does not specify if it is a start or end time
-			#so we have to check it if only put out 2, a start and stop
-			#also this will filter out multiple flights in once netcdf file
+			#unfortunately flt_time only outputs one date/time and does not specify
+			#if it is a start or end time so we have to check it if only put out 2,
+			#a start and stop also this will filter out multiple flights in one netcdf file
 			
 			#print out takeoff | first file date and landing | last file date
 			print PrintDate(@{$date[0]}); print " | "; PrintDate(DateFromFile($files[0])); print "\n";
