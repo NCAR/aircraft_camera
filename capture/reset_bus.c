@@ -27,40 +27,40 @@
 
 int main(int argc, char *argv[])
 {
-	int i;
-    dc1394_t * d;
-    dc1394camera_list_t * list;
-    dc1394camera_t *camera;
-    dc1394error_t err;
+  int i;
+  dc1394_t *d;
+  dc1394camera_list_t *list;
+  dc1394camera_t *camera;
+  dc1394error_t err;
 
-    d = dc1394_new ();
-    if (!d)
-        return 1;
-    err=dc1394_camera_enumerate (d, &list);
-    DC1394_ERR_RTN(err,"Failed to enumerate cameras");
+  d = dc1394_new();
+  if (!d)
+    return 1;
+  err = dc1394_camera_enumerate(d, &list);
+  DC1394_ERR_RTN(err, "Failed to enumerate cameras");
 
-    if (list->num == 0) {
-        dc1394_log_error("No cameras found");
-        return 1;
-    } else {
-		for (i=0; i<list->num; i++) {
-			printf("found camera: %llx on bus\n", list->ids[i].guid);
-		}
-	}
-
-    camera = dc1394_camera_new (d, list->ids[0].guid);
-    if (!camera) {
-        dc1394_log_error("Failed to initialize camera with guid %llx", list->ids[0].guid);
-        return 1;
+  if (list->num == 0) {
+    dc1394_log_error("No cameras found");
+    return 1;
+  } else {
+    for (i=0; i<list->num; i++) {
+      printf("found camera: %llx on bus\n", list->ids[i].guid);
     }
-    dc1394_camera_free_list (list);
+  }
 
-    printf ("Reseting bus...\n");
-    if (dc1394_reset_bus (camera) != DC1394_SUCCESS)
-        printf ("Warning: reset reported error\n");
+  camera = dc1394_camera_new(d, list->ids[0].guid);
+  if (!camera) {
+    dc1394_log_error("Failed to initialize camera with guid %llx", list->ids[0].guid);
+    return 1;
+  }
+  dc1394_camera_free_list(list);
 
-    dc1394_camera_free (camera);
-    dc1394_free (d);
+  printf ("Reseting bus...\n");
+  if (dc1394_reset_bus(camera) != DC1394_SUCCESS)
+    printf("Warning: reset reported error\n");
 
-    return 0;
+  dc1394_camera_free(camera);
+  dc1394_free(d);
+
+  return 0;
 }
