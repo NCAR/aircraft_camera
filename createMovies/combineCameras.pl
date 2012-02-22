@@ -40,8 +40,11 @@ use strict;
 # 2012 Jan 18 - JAA (= JAG)
 # If data is missing, continue on without including data.
 
-# 2012Feb 10 - JAA
+# 2012 Feb 10 - JAA
 # Add new param movieDirectory to specify where to output movies.
+
+# 2012 Feb 22 - JAA
+# Handle case where images don't start until after midnight.
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -301,7 +304,8 @@ print "Annotated images will be stored in $annotatedImageDirectory\n";
 # Find a matching time in the data file
 my $fileNum=0;
 my $haveData = 1;
-my $imageTime;
+my $imageTime = 0;
+my $prevImageTime = 0;
 foreach my $fileName (@jpegFiles) {
         # Code sometimes dies mid processing. If startNum given on command line
         # recover by starting there.
@@ -348,19 +352,21 @@ foreach my $fileName (@jpegFiles) {
 	# doesn't include it.
 	# - Since the date is in the filename, flights that roll over to 
 	# UTC 000000 are still sorted properly.
+        #Save previous image time to check for gaps in imagery
+	$prevImageTime = $imageTime; 
 	$imageTime=substr($fileName,-10,6);
 	my $imageTime_withColons=substr($imageTime,0,2).':'.
 		substr($imageTime,2,2).':'.substr($imageTime,4,2);
 
 	# If not including netCDF data then determine image time from image names.
 	# Determine start time here and end time at end of loop.
+	my $imageDate = substr($fileName,-17,6);
 	if ($keywords->{includeData} ne "yes" && $fileNum == 1) {
-	    my $imageDate = substr($fileName,-17,6);
 	    $outputFileTimes = $imageDate.'.'.$imageTime;
 	}
 
 
-	print "image $fileNum/$numFiles: $fileName\n";
+	print "image $fileNum/$numFiles: $fileName $imageTime\n";
 
 	if ($keywords->{overlayImageTime} eq "yes") {
 	    my $imageDateTime = $fileName;
@@ -396,28 +402,64 @@ foreach my $fileName (@jpegFiles) {
 	# This assumes there are no time gaps in the ascii file generated from 
 	# the netCDF file. This is a safe assumption, especially with production
 	# data. BUT the first image must be equal to or later than the first 
-	# data point.
+	# data point. (Modified to handle first image before first data
+	# Jan 2012).
 	$haveData=1;
 	if ($keywords->{includeData} eq "yes") {
+	    my $dataDate = substr($flightData[0],0,10);
+	    $dataDate =~ s/-//g;
 	    my $dataTime = substr($flightData[0],11,8);
 	    $dataTime =~ s/://g;
-            if ($dataTime > $imageTime) {$haveData = 0;}
-	    while ($dataTime < $imageTime)  {
-#	        print "M";	# Can count 'M's to find out how many images were 
-	        		# missing.
-	        shift(@flightData);
-	        $dataTime = substr($flightData[0],11,8);
-	        $dataTime =~ s/://g;
-		if (scalar(@flightData) == 0) {
-		    print "End of data file reached searching for ".
-		        "$imageTime_withColons\n";
+	    print "data start $dataDate $dataTime\n";
+	    if (
+	    # Special Case: Midnight rollover with data gap
+	    # Both dataTime and imageTime rollover to 00:00:00.
+	    # If there is not an image gap, then data has already
+	    # incremented to 00:00:00, image = data and we are good.
+	    # If there IS a data gap over midnight, then data increments to
+	    # pre-midnight time, but image is after midnight (i.e. data has
+	    # hour 23, image has hour 00, and dataTime < imageTime test fails
+	    # incorrectly. So test for this added Feb 2012.
+		((($imageTime - $prevImageTime) != 1) && ($prevImageTime > $imageTime)) 
+	    # If the first image in the file is after midnight, but the data is 
+	    # before, we need to increment the data until it catches the image.
+	    || (($prevImageTime == 0) && ("20".$imageDate > $dataDate))
+	    ) {
+		    # Increment until data reaches midnight rollover. Next while
+		    # loop will finish incrementing data until it reaches image
+                    while ($dataTime != 000000) {
+                        shift(@flightData);
+	                $dataTime = substr($flightData[0],11,8);
+	                $dataTime =~ s/://g;
+	                if (scalar(@flightData) == 0) {
+	                print "End of data file reached searching for ".
+	                      "$imageTime_withColons\n";
 
-			# If data is missing, continue on without including data.
-			$haveData=0;
-			exit(1);
-			last;
-		}
+	                # If data is missing, continue on without including data.
+	                $haveData=0;
+	                exit(1);
+	                last;
+	                }
+		    }
 	    }
+            if ($dataTime > $imageTime) { $haveData = 0; }
+	    while ($dataTime < $imageTime)  {
+#	        print "M";# Can count 'M's to find out how many images were 
+	        	  # missing.
+              shift(@flightData);
+	      $dataTime = substr($flightData[0],11,8);
+	      $dataTime =~ s/://g;
+	      if (scalar(@flightData) == 0) {
+	           print "End of data file reached searching for ".
+	                 "$imageTime_withColons\n";
+
+	           # If data is missing, continue on without including data.
+	           $haveData=0;
+	           exit(1);
+	           last;
+	       }
+	    }
+	    print "data final $dataTime\n";
 	
 	    # Create the data string.
 	    $theText = '';
@@ -468,12 +510,12 @@ my $mp4BitRate = $keywords->{mp4BitRate};;
 my $outputFilename = "$flightNumber.$outputFileTimes.mp4";
 # First ffmpeg pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 1 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
-my $command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{netcdfFile}."/$outputFilename";
+my $command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{movieDirectory}."/$outputFilename";
 print "$command\n";
 if (system "$command") { die "Unable to create MPEG file $outputFilename, pass 1 using command $command"}; 
 # Second pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 2 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
-$command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{netcdfFile}."/$outputFilename";
+$command = "/net/work/bin/converters/createMovies/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{movieDirectory}."/$outputFilename";
 print "$command\n";
 if (system "$command") {die "Unable to create MPEG file $outputFilename, pass 2 using command $command"};
 
