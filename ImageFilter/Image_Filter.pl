@@ -93,7 +93,7 @@ EOF
 else {
 	#Process command line arguments
 	foreach my $a (@ARGV) {
-		#print $a . "\n";
+	        #print $a . "\n";
 	    	if ($a =~ m/-ext:(\S*)/) {$ext = $1;}
 		elsif ($a =~ m/-maxmean:(\d+)\|(\d+)\|(\d+)/) { $threshold[0][0] = $1; $threshold[0][1] = $2 ; $threshold[0][2] = $3 }
 		elsif ($a =~ m/-maxdev:(\d+)\|(\d+)\|(\d+)/) { $threshold[1][0] = $1; $threshold[1][1] = $2 ; $threshold[0][3] = $3 }
@@ -113,7 +113,8 @@ else {
 		elsif ($a =~ m/-sstart:(\d+)/) { $speedstart = $1; }
 		elsif ($a =~ m/-sstop:(\d+)/) { $speedstop = $1; }
 		
-		elsif (-d $a) {$dir = abs_path($a);} #target dir
+		#elsif (-d $a) {$dir = abs_path($a); } #target dir
+		elsif (-d $a) {$dir = $a; } #target dir
 		elsif ($a eq "" || $a eq "\n") {} #For capturing stangeness
 		else {die "INVALID ARGUMENT: $a";}	
 	}
@@ -501,7 +502,7 @@ sub IsDark
 			}
 			else{ $colordata[$colorindex][1] = $1; }
 		}
-		elsif ($_ =~ m/Resolution/) { last; }
+		#elsif ($_ =~ m/Resolution/) { last; }
 	}	
 	close DATA;
 	
