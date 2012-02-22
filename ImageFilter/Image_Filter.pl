@@ -204,7 +204,13 @@ if ($checkGnd) {
 	# This if statement allows us to create preliminary movies before the final .nc files
 	# exist. - JAA 8/24/2011
 	unless (-e $netCDF) {
-	    $netCDF = "${DATA_DIR}/$project$flight.nc";
+	    open(DATA, 'echo $DATA_DIR |');
+	    while (<DATA>) {
+		chomp;
+	        $netCDF = "$_/$project$flight.nc";
+	    }
+	    close(DATA);
+	    print "Use data file ".$netCDF."\n";
 	}
 	
 	if (-e $netCDF) { #if the netCDF file is found
