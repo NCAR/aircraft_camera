@@ -29,6 +29,7 @@ use Cwd 'abs_path';
 print "\n";
 #flags and defults
 our $ext = "jpg";
+our $pattern = '(\d\d)(\d\d)(\d\d)[\_|-](\d\d)(\d\d)(\d\d)\.'.$ext;
 our $speedhack = 0;
 our $verbose = 0;
 our $force = 0;
@@ -58,6 +59,10 @@ if (@ARGV <= 0) {
 	Usage:	./Image_Filter.pl [OPTIONS] TARGET_DIR
 
 	Options:
+		-pattern:"regex"Sets the regex to pull date/time from filename for continuity checking and ground
+				image checking.  Default is for aircraft camera images, i.e. yymmdd[-_]hhmmss.jpg
+					'(\d\d)(\d\d)(\d\d)[\_|-](\d\d)(\d\d)(\d\d)\.'.$ext
+				If don't need continuity/gnd check, set -skipcont -skipgnd -pattern:"none"
 		-ext:jpg	Sets file extention (Default: jpg)
 		-maxmean:R|G|B	Sets maximum average pixel value (per color)
 				(Default:35|35|55) {Range: 0-255}
@@ -95,8 +100,11 @@ else {
 	foreach my $a (@ARGV) {
 	        #print $a . "\n";
 	    	if ($a =~ m/-ext:(\S*)/) {$ext = $1;}
-		elsif ($a =~ m/-maxmean:(\d+)\|(\d+)\|(\d+)/) { $threshold[0][0] = $1; $threshold[0][1] = $2 ; $threshold[0][2] = $3 }
-		elsif ($a =~ m/-maxdev:(\d+)\|(\d+)\|(\d+)/) { $threshold[1][0] = $1; $threshold[1][1] = $2 ; $threshold[0][3] = $3 }
+		#elsif ($a =~ m/-maxmean:(\d+)\|(\d+)\|(\d+)/) { $threshold[0][0] = $1; $threshold[0][1] = $2 ; $threshold[0][2] = $3 }
+		#elsif ($a =~ m/-maxdev:(\d+)\|(\d+)\|(\d+)/) { $threshold[1][0] = $1; $threshold[1][1] = $2 ; $threshold[0][3] = $3 }
+		elsif ($a =~ m/-maxmean:(\d+)\|(\d+)\|(\d+)/) { $threshold[0][0] = $1; $threshold[1][0] = $2 ; $threshold[2][0] = $3 }
+		elsif ($a =~ m/-maxdev:(\d+)\|(\d+)\|(\d+)/) { $threshold[0][1] = $1; $threshold[1][1] = $2 ; $threshold[2][1] = $3 }
+		elsif ($a =~ m/-pattern:(.*)/) {$pattern = $1; }
 		elsif ($a =~ m/-t:(\d+)/) { $expectedDiff = $1; }
 		elsif ($a =~ m/-proj:(.*)/) { $project = $1; }
 		elsif ($a =~ m/-fltno:(.*)/) { $flight = $1; }
@@ -119,6 +127,11 @@ else {
 		else {die "INVALID ARGUMENT: $a";}	
 	}
 	if ($dir eq "") {die "NO DIRECTORY ENTERED: $dir";}
+	# If there is no time info, then must skip continuity and ground check. Just do dark check.
+	if ($pattern =~ m/none/) {
+	    $checkGnd = 0;
+	    $checkCont = 0;
+	}
 }
 
 print "Reading directory: $dir\n";
@@ -381,14 +394,18 @@ sub PrintDate
 
 sub DateFromFile
 {
-	if ($_[0] =~ m/(\d\d)(\d\d)(\d\d)[\_|-](\d\d)(\d\d)(\d\d)\.$ext/) {
+	# nono must always be accompanied by -skipgnd and -skipcont
+	if ($_[0] =~ m/none/) {
+	    	return;
+	}
+	if ($_[0] =~ m/$pattern/) {
 		my @date;
-		$date[0] = $6;
-		$date[1] = $5;
-		$date[2] = $4;
-		$date[3] = $3;
-		$date[4] = $2-1;
-		$date[5] = $1;
+		$date[0] = $6; #sec
+		$date[1] = $5; #min
+		$date[2] = $4; #hr
+		$date[3] = $3; #day
+		$date[4] = $2-1; #mon
+		$date[5] = $1; #yr
 		if ($date[5] < 100) { $date[5] += 2000; }
 			
 		return @date;
@@ -518,20 +535,26 @@ sub IsDark
 
 	my $dark = 1; #dark unless otherwise proven by jury trial
 	for (my $i = 0; $i < 3; $i++) {
-		#print "$colordata[$i][0] | $colordata[$i][1]\n";
+	        #print "$colordata[$i][0] | $colordata[$i][1]\n";
 		#if mean or standard deviation is above threshold image is not dark
-		#if ($i == 2) { print "$colordata[$i][0] | $threshold[$i][0]\n";}
+		#if ($i == 2) { 
+		#    print "$i:0 $colordata[$i][0] | $threshold[$i][0]\n";
+		#    print "$i:1 $colordata[$i][1] | $threshold[$i][1]\n";
+		#}
 		#my $stop = <STDIN>;
 		if ($colordata[$i][0] > $threshold[$i][0]) {
 			$dark = 0;
+			#print "$i: $dark\n";
 			last;
 		}
 		elsif ($colordata[$i][1] > $threshold[$i][1]) {
 			$dark = 0;
+			#print "$i: $dark\n";
 			last;
 		}  
 	}
 	#if ($dark) { print "DARK \n"; }
+	#print "---\n";
 	return $dark;
 
 }
