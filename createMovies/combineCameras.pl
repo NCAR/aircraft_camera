@@ -406,25 +406,34 @@ foreach my $fileName (@jpegFiles) {
 	# Jan 2012).
 	$haveData=1;
 	if ($keywords->{includeData} eq "yes") {
-	    my $dataDate = substr($flightData[0],0,10);
-	    $dataDate =~ s/-//g;
-	    my $dataTime = substr($flightData[0],11,8);
-	    $dataTime =~ s/://g;
-	    print "data start $dataDate $dataTime\n";
-	    if (
-	    # Special Case: Midnight rollover with data gap
-	    # Both dataTime and imageTime rollover to 00:00:00.
-	    # If there is not an image gap, then data has already
-	    # incremented to 00:00:00, image = data and we are good.
-	    # If there IS a data gap over midnight, then data increments to
-	    # pre-midnight time, but image is after midnight (i.e. data has
-	    # hour 23, image has hour 00, and dataTime < imageTime test fails
-	    # incorrectly. So test for this added Feb 2012.
+	    $theText = '';
+	    if (scalar(@flightData) == 0) {
+	       print "End of data file reached searching for ".
+	             "$imageTime_withColons\n";
+
+	       # If data is missing, continue on without including data.
+	       $haveData=0;
+	    } else {
+	        my $dataDate = substr($flightData[0],0,10);
+	        $dataDate =~ s/-//g;
+	        my $dataTime = substr($flightData[0],11,8);
+	        $dataTime =~ s/://g;
+	        print "data start $dataDate $dataTime\n";
+	        if (
+	        # Special Case: Midnight rollover with data gap
+	        # Both dataTime and imageTime rollover to 00:00:00.
+	        # If there is not an image gap, then data has already
+	        # incremented to 00:00:00, image = data and we are good.
+	        # If there IS a data gap over midnight, then data increments to
+	        # pre-midnight time, but image is after midnight (i.e. data has
+	        # hour 23, image has hour 00, and dataTime < imageTime test fails
+	        # incorrectly. So test for this added Feb 2012.
 		((($imageTime - $prevImageTime) != 1) && ($prevImageTime > $imageTime)) 
-	    # If the first image in the file is after midnight, but the data is 
-	    # before, we need to increment the data until it catches the image.
-	    || (($prevImageTime == 0) && ("20".$imageDate > $dataDate))
-	    ) {
+	        # If the first image in the file is after midnight, but the data
+	        # is before, we need to increment the data until it catches the 
+		# image.
+	        || (($prevImageTime == 0) && ("20".$imageDate > $dataDate))
+	        ) {
 		    # Increment until data reaches midnight rollover. Next while
 		    # loop will finish incrementing data until it reaches image
                     while ($dataTime != 000000) {
@@ -441,34 +450,25 @@ foreach my $fileName (@jpegFiles) {
 	                last;
 	                }
 		    }
-	    }
-            if ($dataTime > $imageTime) { $haveData = 0; }
-	    while ($dataTime < $imageTime)  {
-#	        print "M";# Can count 'M's to find out how many images were 
-	        	  # missing.
-              shift(@flightData);
-	      $dataTime = substr($flightData[0],11,8);
-	      $dataTime =~ s/://g;
-	      if (scalar(@flightData) == 0) {
-	           print "End of data file reached searching for ".
-	                 "$imageTime_withColons\n";
-
-	           # If data is missing, continue on without including data.
-	           $haveData=0;
-	           exit(1);
-	           last;
-	       }
-	    }
-	    print "data final $dataTime\n";
-	
-	    # Create the data string.
-	    $theText = '';
-	    if ($haveData == 1) {
-	        my @dataItems = split(',',shift(@flightData));
-	        foreach my $value (@dataItems) { 
-		    $theText=$theText.sprintf("%s\n", $value);
 	        }
-#	    chomp $theText;		# Remove final newline.
+                if ($dataTime > $imageTime) { $haveData = 0; }
+	        while ($dataTime < $imageTime)  {
+	            # print "M";# Can count 'M's to find out how many images were 
+	            # missing.
+                    shift(@flightData);
+	            $dataTime = substr($flightData[0],11,8);
+	            $dataTime =~ s/://g;
+	        }
+	        print "data final $dataTime\n";
+	
+	        # Create the data string.
+	        if ($haveData == 1) {
+	            my @dataItems = split(',',shift(@flightData));
+	            foreach my $value (@dataItems) { 
+		        $theText=$theText.sprintf("%s\n", $value);
+	            }
+	        # chomp $theText;		# Remove final newline.
+	        }
 	    }
 	
 	    # Initialize image used for variable values.
@@ -481,8 +481,8 @@ foreach my $fileName (@jpegFiles) {
 	        weight=>500, gravity=>'SouthEast', fill=>'black',text=>"$theText");
 
 	    #################	
-	    # Composite all three images (variable values, labels, and camera image).
-	    # Put the values along the lower right side of the image
+	    # Composite all three images (variable values, labels, and camera 
+	    # image). Put the values along the lower right side of the image
 	    #################	
 	
 	    $outputImage->Composite( image=>$valueImage, gravity=>'NorthEast');
@@ -490,7 +490,8 @@ foreach my $fileName (@jpegFiles) {
 	    $outputImage->Composite( image=>$labelImage, gravity=>'NorthEast');
 
 	# write out the image.
-	my $outputImageName=sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
+	my $outputImageName=
+	    sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
 	$outputImage->write($outputImageName);
 }
 
