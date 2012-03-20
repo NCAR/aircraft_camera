@@ -16,7 +16,9 @@
 
 void cleanup_and_exit(dc1394camera_t *);
 int setup_cams(camConf_t **camArray, int nCams, dc1394_t *d);
-int getIMG(const char *, camConf_t *, dc1394_t *, int *);
+int captureIMG( camConf_t *camConfig, dc1394_t *d, int *night, dc1394video_frame_t *frame); 
+int saveIMG(const char *image_file_name, camConf_t *camConfig, dc1394video_frame_t *frame, dc1394_t *d); 
 void printCamConf(camConf_t *camArray );
+void copyFrame(dc1394video_frame_t *frame, dc1394video_frame_t *new_frame);
 
 #endif

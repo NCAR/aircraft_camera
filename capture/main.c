@@ -1,3 +1,6 @@
+#include <sys/time.h>
+#include <time.h>
+
 /*
  * The purpose of this program is to collect and archive images from 
  * IEEE1394 scientific cameras.
@@ -15,6 +18,7 @@
 #include <syslog.h>
 #include <time.h> 		//for timestamp
 #include <unistd.h> 	//for sleep, fork
+#include <pthread.h>    // for multi-threading
 
 #include "getIMG.h"
 #include "pgFuncs.h"
@@ -29,12 +33,14 @@
 #define CONFIG_FILE "/etc/capture.conf"
 #define FILE_PREFIX "./flight_number_"
 #define DB_HOST "acserver"
+#define MAX_CAMERAS 5
 
 void wait_for_camera(dc1394_t *d);
+void *worker(void *arg[]);
 int bus_count_changed(dc1394_t *d, int numCams);
 void cleanup_d(camConf_t ***, int, status_t *);
 int reinitialize_d(char *, dc1394_t *, camConf_t ***, status_t *, int *, PGconn *, char *, char *);
-void finishUp();
+void finishUp(int sig);
 void getTime(char *, char *);
 void parseInputLine(int, char **, char**, char**, char**, char**, int*, int*);
 char *defaults(char **arg, char *value);
@@ -42,6 +48,15 @@ void printArgsError(char *);
 
 /* global variable for interrupt handling */
 int interrupted = 0;
+
+/* struct for handling thredding */
+typedef struct
+{
+	const char *image_file_name;
+        camConf_t *camConfig;
+        dc1394video_frame_t *frame;
+        dc1394_t *d;
+}   parm; 
 
 int main(int argc, char *argv[])
 {
@@ -82,11 +97,31 @@ int main(int argc, char *argv[])
 	/* allocate/set up camArray */
 	camCount = reinitialize_d(flNum, d, &camArray, &statMC, &useDB, conn, conf, prefix);
 
+#ifdef DEBUG
+	long ms;
+	int sec;
+	struct timeval tv;
+	struct timezone tz;
+	struct tm nt;
+#endif
+
+// TODO: will probably be better to malloc this stuff, but 5 is probably max cameras - 
+	dc1394video_frame_t *frames[MAX_CAMERAS];
+	pthread_t camThreads[MAX_CAMERAS];
+        parm* arg;
 
 	/*				 %=== MAIN LOOP HERE ===% 
 	 * keep getting pictures until signal or night detection 
 	 */
 	while(!interrupted && night<MAX_NIGHT_VAL){
+
+#ifdef DEBUG
+	gettimeofday(&tv, &tz);
+	localtime_r(&tv.tv_sec, &nt);
+	syslog(LOG_WARNING, "%d:%02d:%02d %3d - Start of camera loop\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000);
+	ms = tv.tv_usec/1000;
+	sec = nt.tm_sec;
+#endif
 
 		/* spawn child (timer) process to wait one second, then die */
 		if( !(cpid = fork()) ) {
@@ -94,21 +129,55 @@ int main(int argc, char *argv[])
 			exit(0);
 		}
 
+                /* set up the threads - this is where mallocing should occur ala next line */
+                arg=(parm *)malloc(sizeof(parm)*camCount);
+
+		/* create space for the frames */
+        	for (i=0; i<MAX_CAMERAS; i++) frames[i] = calloc(1, sizeof(dc1394video_frame_t));
+
 		/* main process continues here*/
 		getTime(timeStr, statMC.clock);
+
+                /* capture frames for all the cameras */
+		for (i=0; i<camCount; i++){
+			int rtn = captureIMG(camArray[i], d, &night, frames[i]);
+                }
+
+		/* slowly bring night back to 0, to help avoid false triggers */
+		if(night>0) night--;
+
+                /* launch threads to save all the images gathered */
 		for (i=0; i<camCount; i++){
 			/* produce file name */
 			sprintf(statMC.latest[i], "%s%s/%s/%s", prefix, flNum,
 					camArray[i]->direction, timeStr); 
 
+                        /* setup the struct passed to the thread */
+                        arg[i].image_file_name = statMC.latest[i];
+                        arg[i].camConfig = camArray[i];
+			arg[i].frame = frames[i];
+                        arg[i].d = d;
+
 			/* capture & compress image, return total bytes written */
-			statMC.lastSize[i] = getIMG(statMC.latest[i], camArray[i], d, &night);
+			statMC.lastSize[i] = pthread_create(&camThreads[i], NULL, worker, (void *)(arg+i));
 
 			/* Update database if connected */
 			if(useDB) updatePostgres(conn, timeStr, i);
 		}
-		/* slowly bring night back to 0, to help avoid false triggers */
-		if(night>0) night--;
+
+                /*  Bring all the threads back together */
+                for (i=0; i<camCount; i++) {
+			pthread_join(camThreads[i], NULL);
+                }
+
+		/* Clean up - Note: dc1394 libraries seem happier if we recreate frames each time around (?) */
+                free(arg);
+                for (i=0; i<camCount; i++){
+			if (frames[i] != NULL) {
+                        	free(frames[i]->image);
+				free(frames[i]);
+          		}
+		}
 
 		/* cleanup and reinit if there are new cams on the bus */
 		if ( rescanCount++ >= RESCAN_BUS_INTERVAL ) {
@@ -124,8 +193,24 @@ int main(int argc, char *argv[])
 		/* send multicast status packet */
 		multicast_send_status(&statMC);
 
+#ifdef DEBUG
+		gettimeofday(&tv, &tz);
+		localtime_r(&tv.tv_sec, &nt);
+		ms = ((nt.tm_sec-sec)*1000) + (tv.tv_usec/1000 - ms);
+		syslog(LOG_WARNING, "%d:%02d:%02d %3d - End of camera loop - %d mSec\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000, ms );
+		ms = tv.tv_usec/1000;
+		sec = nt.tm_sec;
+#endif 
+
 		/* wait for timer (child) process to die before looping again*/
 		waitpid(cpid, NULL, 0);
+
+#ifdef DEBUG
+		gettimeofday(&tv, &tz);
+		localtime_r(&tv.tv_sec, &nt);
+		syslog(LOG_WARNING, "%d:%02d:%02d %3d - End of waitpid \n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000);
+#endif
+
 	}
 
 	/* log the reason for stopping the program */
@@ -169,6 +254,8 @@ void wait_for_camera(dc1394_t *d)
 			return;
 		}
 	}
+
+        return;
 }
 
 void cleanup_d(camConf_t ***camArray_ptr, int camCount, status_t *statMC)
@@ -237,9 +324,22 @@ int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t
 	return numCams;
 }
 
-void finishUp(){
+void finishUp(int sig){
 /* This function will be set as the signal handler
-   It simply breaks the main loop so that we can exit cleanly */
+   It simply gives info and then breaks the main loop so that we can exit cleanly */
+	switch (sig) {
+		case SIGINT:
+			syslog(LOG_WARNING, "Caught SIGINT signal - exiting.");
+			break;
+		case SIGTERM:
+			syslog(LOG_WARNING, "Caught SIGTERM signal - exiting.");
+			break;
+		case SIGHUP:
+			syslog(LOG_WARNING, "Caught SIGHUP signal - exiting.");
+			break;
+		default:
+			syslog(LOG_WARNING, "Should not have gotten here...  exiting.");
+	}
 	interrupted = 1;
 }
 
@@ -323,5 +423,14 @@ void printArgsError(char *cmd){
 	printf("\tNOTE: you must specify a flight number or use -d to get from database\n\n");
 	exit(1);
 
+}
+
+void * worker(void *arg[])
+	/* This function is an interface to the multi-threaded aspect of the program.  Each 
+ 	   pthread calls the worker function */
+{
+	parm *p = (parm *) arg;
+        saveIMG(p->image_file_name, p->camConfig, p->frame, p->d);
+        return NULL;
 }
 

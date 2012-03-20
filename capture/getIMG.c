@@ -1,3 +1,7 @@
+#include <sys/time.h>
+#include <time.h>
+
+
 /*
  * Grab an image using libdc1394
  */
@@ -9,11 +13,12 @@ extern int addXMP(const char *, camConf_t*, dc1394camera_t *);
 
 void cleanup_and_exit(dc1394camera_t *camera){
 	/*  Releases the cameras and exits */
-
+	syslog(LOG_WARNING, "Encountered Camera Error\n");
 	dc1394_video_set_transmission(camera, DC1394_OFF);
 	dc1394_capture_stop(camera);
 	dc1394_camera_free(camera);
-//	exit(1);
+
+//	exit(1);  // DC1393_ERR_CLN_RTN exits the program
 }
 
 int setup_cams(camConf_t **camArray, int nCams, dc1394_t *d){
@@ -63,19 +68,26 @@ int setup_cams(camConf_t **camArray, int nCams, dc1394_t *d){
 	return 1;
 }
 
-int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *night){
+int captureIMG( camConf_t *camConfig, dc1394_t *d, int *night, dc1394video_frame_t *frame) {
 	/*  Gets an image from the specified camera and 
 		writes to the specified filename */
-	
-	FILE* imagefile;
-	char full_file_name[256];
-	unsigned char *reducedFrame;
-	int numPix, i, totalSize=0;
 	unsigned gain;
-	struct stat st;
 	dc1394camera_t *camera;
-	dc1394video_frame_t *frame=NULL;
-	dc1394error_t err;
+	dc1394video_frame_t *new_frame=NULL;
+	dc1394error_t err;	
+
+#ifdef DEBUG
+	long ms;
+	int sec;
+	struct timeval tv;
+	struct timezone tz;
+	struct tm nt;
+	gettimeofday(&tv, &tz);
+	localtime_r(&tv.tv_sec, &nt);
+	syslog(LOG_WARNING, "%d:%02d:%02d %3d - captureIMG called for guid %11x\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000, camConfig->guid);
+	ms = tv.tv_usec/1000;
+	sec = nt.tm_sec;
+#endif
 
 	camera = dc1394_camera_new (d, camConfig->guid);
 	if (!camera) {
@@ -84,6 +96,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 		return 1;
 	}
 //	printf("initialized camera GUID %"PRIx64"\n", camera->guid);
+
 
 //	err=dc1394_capture_setup(camera,4, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
 	err=dc1394_capture_setup(camera,1, (DC1394_CAPTURE_FLAGS_DEFAULT & !DC1394_CAPTURE_FLAGS_CHANNEL_ALLOC));
@@ -97,7 +110,7 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 		"Could not start camera iso transmission\n");
 
 	/* capture one frame */
-	err=dc1394_capture_dequeue(camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
+	err=dc1394_capture_dequeue(camera, DC1394_CAPTURE_POLICY_WAIT, &new_frame);
 	DC1394_ERR_CLN_RTN(err,cleanup_and_exit(camera),"Could not capture a frame\n");
 	
 	/* stop data transmission */
@@ -112,6 +125,58 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 	if ((100*((float)gain - camConfig->minGain))/
 		(camConfig->maxGain - camConfig->minGain) > 
 		(camConfig->nightThreshold)) *night += 11;
+
+	/* Make a copy of the new frame to use going forward - i.e. get it out of dc1394 memory space */
+	copyFrame(frame, new_frame);
+
+#ifdef DEBUG
+	gettimeofday(&tv, &tz);
+	localtime_r(&tv.tv_sec, &nt);
+	ms = (tv.tv_usec/1000)-ms;
+	if (nt.tm_sec != sec) ms=ms+1000;
+	syslog(LOG_WARNING, "%d:%02d:%02d %3d - Image capture for guid %11x:%3d\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000, camConfig->guid, ms);
+	ms = tv.tv_usec/1000;
+	sec = nt.tm_sec;
+#endif
+
+	dc1394_capture_stop(camera);
+	dc1394_camera_free(camera);
+
+	return 0;
+}
+
+/* Save the image to whatever files have been specified.  Return bytes writen. */
+int saveIMG(const char *image_file_name, camConf_t *camConfig, dc1394video_frame_t *frame, dc1394_t *d) {
+
+#ifdef DEBUG
+	long ms;
+	int sec;
+	struct timeval tv;
+	struct timezone tz;
+	struct tm nt;
+	gettimeofday(&tv, &tz);
+	localtime_r(&tv.tv_sec, &nt);
+	syslog(LOG_WARNING, "%d:%02d:%02d %3d - saveIMG called for guid %11x\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000, camConfig->guid);
+	ms = tv.tv_usec/1000;
+	sec = nt.tm_sec;
+#endif
+
+	unsigned char *reducedFrame;
+	int totalSize=0;
+	int numPix, i; 
+	char full_file_name[256];
+	FILE* imagefile;
+	dc1394camera_t *camera;
+	struct stat st;
+
+	camera = dc1394_camera_new (d, camConfig->guid);
+	if (!camera) {
+		dc1394_log_error("Failed to initialize camera with guid %llx",
+						 camConfig->guid);
+		return 1;
+	}
+
+	frame->camera = camera;
 
 	/* save raw binary data if requested */
 	if(camConfig->raw){
@@ -131,6 +196,16 @@ int getIMG(const char *image_file_name, camConf_t *camConfig, dc1394_t *d, int *
 	dc1394video_frame_t *new_frame;
    	new_frame=calloc(1,sizeof(dc1394video_frame_t));
 	dc1394_debayer_frames(frame, new_frame, camConfig->bayerMethod);
+
+#ifdef DEBUG
+	gettimeofday(&tv, &tz);
+	localtime_r(&tv.tv_sec,&nt);
+	ms = (tv.tv_usec/1000)-ms;
+	if (nt.tm_sec != sec) ms=ms+1000;
+	syslog(LOG_WARNING, "%d:%02d:%02d %3d - Image debayer for guid %11x:%3d\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000, camConfig->guid, ms);
+	ms = tv.tv_usec/1000;
+	sec = nt.tm_sec;
+#endif
 
 	/* save image as uncompressed .ppm image, if requested */
 	if(camConfig->ppm){	
@@ -187,6 +262,16 @@ the latest (svn) verison of libexiv2 */
 		if (!stat(full_file_name, &st)) totalSize += st.st_size;
 	}
 
+#ifdef DEBUG
+	gettimeofday(&tv, &tz);
+	localtime_r(&tv.tv_sec,&nt);
+	ms = (tv.tv_usec/1000)-ms;
+	if (nt.tm_sec != sec) ms=ms+1000;
+	syslog(LOG_WARNING, "%d:%02d:%02d %3d - Image written for guid %11x:%3d\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000, camConfig->guid, ms);
+	ms = tv.tv_usec/1000;
+	sec = nt.tm_sec;
+#endif
+
 	/* clean up and return */
 	free(new_frame->image);
 	free(new_frame);
@@ -216,4 +301,37 @@ void printCamConf(camConf_t *camArray) {
 		printf("\n");
 
 		printf("quality: %d\n", camArray->quality);
+}
+
+void copyFrame(dc1394video_frame_t *to_frame, dc1394video_frame_t *from_frame) {
+
+	/* copy captured frame into returned frame using brute force 
+  	   Note: this relies on the dc1394video_frame_t structure being unchanged.
+  	   if the  dc1394 libraries are updated (current ver: 2.1.2)  */
+	to_frame->allocated_image_bytes = from_frame->allocated_image_bytes;
+        to_frame->camera = from_frame->camera;
+        to_frame->color_coding = from_frame->color_coding;
+        to_frame->color_filter = from_frame->color_filter;
+	to_frame->data_depth = from_frame->data_depth;
+	to_frame->data_in_padding = from_frame->data_in_padding;
+	to_frame->frames_behind = from_frame->frames_behind;
+	to_frame->id = from_frame->id;
+	to_frame->image = calloc(1,from_frame->total_bytes);
+        memcpy(to_frame->image, from_frame->image, from_frame->total_bytes);
+	to_frame->image_bytes = from_frame->image_bytes;
+	to_frame->little_endian = from_frame->little_endian;
+	to_frame->packet_size = from_frame->packet_size;
+	to_frame->packets_per_frame = from_frame->packets_per_frame;
+	to_frame->padding_bytes = from_frame->padding_bytes;
+	to_frame->position[0] = from_frame->position[0];
+	to_frame->position[1] = from_frame->position[1];
+	to_frame->size[0] = from_frame->size[0];
+	to_frame->size[1] = from_frame->size[1];
+	to_frame->stride = from_frame->stride;
+	to_frame->timestamp = from_frame->timestamp;
+	to_frame->total_bytes = from_frame->total_bytes;
+	to_frame->video_mode = from_frame->video_mode;
+	to_frame->yuv_byte_order = from_frame->yuv_byte_order;
+
+	return;
 }
