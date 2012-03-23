@@ -3,12 +3,12 @@ Name: capture-camserver
 Version: 0.7
 Release: 1
 Group: Applications/Text
-Source: %{name}-%{version}.tar.bz2
+Source: %{name}-%{version}.tar.gz
 License: none
 URL: http://svn/svn/raf/trunk/instruments/camera
-Distribution: RHEL 5.3 Linux
-Requires: libdc1394 >= 2.1.0-1 libjpeg libpng libpqxx exiv2 httpd php
-BuildRequires: libdc1394 >= 2.1.0-1 libjpeg-devel libpng-devel libpqxx-devel exiv2-devel
+Distribution: RHEL 6 Linux
+Requires: libdc1394 >= 2.1.0-1 libjpeg libpng exiv2 httpd php
+BuildRequires: libdc1394 >= 2.1.0-1 libjpeg-devel libpng-devel exiv2-devel
 Buildroot: %{_tmppath}/%{name}-root
 
 %description
@@ -19,6 +19,7 @@ This program finds any cameras on the Firewire (ieee1394) bus and attempts to ca
 %setup -n capture-camserver
 
 %build
+make clean
 make
 gzip -c capture.man.1 > capture.1.gz
 
@@ -32,6 +33,7 @@ cp capture.1.gz $RPM_BUILD_ROOT/%{_mandir}/man1/
 cp capture.conf $RPM_BUILD_ROOT/etc/
 cp capture_reset_bus $RPM_BUILD_ROOT/usr/sbin/
 cp capture_monitor.sh $RPM_BUILD_ROOT/usr/sbin/
+cp reload_fw $RPM_BUILD_ROOT/usr/sbin/
 cp capture.sh $RPM_BUILD_ROOT/etc/init.d/capture
 cp capture.php $RPM_BUILD_ROOT/var/www/html/camera/
 
@@ -70,8 +72,16 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0664,ads,apache) /var/www/html/camera/capture.php
 %attr(0774,ads,apache) /usr/sbin/capture_monitor.sh
 %attr(0774,ads,apache) /usr/sbin/capture_reset_bus
+%attr(0774,ads,apache) /usr/sbin/reload_fw
 
 %changelog
+* Fri Mar 23 2012 <tbaltzer@ucar.edu> 0.7-1
+- cjw changed capture stop/start to unload and reload firewire modules
+-    this is the reload_fw program (source unfound - use strings reload_fw to see what it does)
+- updated capture for /etc/init.d to provide more information to user through syslog
+- added a make clean in case .o files exist prior to make
+- no longer requires libpqxx libraries
+
 * Thu Jul 29 2011 <wasinger@ucar.edu> 0.5-1
 - fixed /etc/init.d/capture:
 -   starts were not detecting previous starts

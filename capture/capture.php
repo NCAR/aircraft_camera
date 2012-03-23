@@ -14,6 +14,8 @@
 
 	$capture = "/etc/init.d/capture";
 
+	shell_exec("/usr/sbin/reload_fw");
+
 	if(isset($_GET["start"])) {
 		shell_exec("$capture start > /dev/null &");
 	}

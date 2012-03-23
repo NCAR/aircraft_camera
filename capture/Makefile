@@ -1,5 +1,5 @@
 OBJECTS = main.o getIMG.o parseFile.o writejpeg.o writepng.o pgFuncs.o multicast.o xmp.o
-CFLAGS = -Wall -Wextra -g  -DDEBUG
+CFLAGS = -Wall -Wextra -g  #-DDEBUG
 CXXFLAGS = -Wall -Wextra -g
 DCLIB = -ldc1394
 LIBS = $(DCLIB) -ljpeg -lpng -lpq -lexiv2

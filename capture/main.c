@@ -136,6 +136,7 @@ int main(int argc, char *argv[])
         	for (i=0; i<MAX_CAMERAS; i++) frames[i] = calloc(1, sizeof(dc1394video_frame_t));
 
 		/* main process continues here*/
+		/* Get the current time to use as a name for all image files created in this cycle */
 		getTime(timeStr, statMC.clock);
 
                 /* capture frames for all the cameras */
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
 			pthread_join(camThreads[i], NULL);
                 }
 
-		/* Clean up - Note: dc1394 libraries seem happier if we recreate frames each time around (?) */
+		/* Clean up - Note: dc1394 libraries seem happier if we re-create frames each time around (?) */
                 free(arg);
                 for (i=0; i<camCount; i++){
 			if (frames[i] != NULL) {
