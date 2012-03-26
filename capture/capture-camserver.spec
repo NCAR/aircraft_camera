@@ -7,8 +7,8 @@ Source: %{name}-%{version}.tar.gz
 License: none
 URL: http://svn/svn/raf/trunk/instruments/camera
 Distribution: RHEL 6 Linux
-Requires: libdc1394 >= 2.1.0-1 libjpeg libpng exiv2 httpd php
-BuildRequires: libdc1394 >= 2.1.0-1 libjpeg-devel libpng-devel exiv2-devel
+Requires: libdc1394 >= 2.1.0-1 libjpeg libpng exiv2 httpd php postgresql-libs
+BuildRequires: libdc1394 >= 2.1.0-1 libjpeg-devel libpng-devel exiv2-devel postgresql-devel
 Buildroot: %{_tmppath}/%{name}-root
 
 %description
