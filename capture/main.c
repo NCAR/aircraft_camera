@@ -161,15 +161,17 @@ int main(int argc, char *argv[])
 
 			/* capture & compress image, return total bytes written */
 			statMC.lastSize[i] = pthread_create(&camThreads[i], NULL, worker, (void *)(arg+i));
-
-			/* Update database if connected */
-			if(useDB) updatePostgres(conn, timeStr, i);
 		}
 
                 /*  Bring all the threads back together */
                 for (i=0; i<camCount; i++) {
 			pthread_join(camThreads[i], NULL);
                 }
+
+		/* Update database if connected */
+		for (i=0; i<camCount; i++){
+			if(useDB) updatePostgres(conn, timeStr, i);
+		}
 
 		/* Clean up - Note: dc1394 libraries seem happier if we re-create frames each time around (?) */
                 free(arg);
