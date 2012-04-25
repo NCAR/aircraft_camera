@@ -14,17 +14,24 @@
 
 	$capture = "/etc/init.d/capture";
 
-	shell_exec("/usr/sbin/reload_fw");
 
 	if(isset($_GET["start"])) {
+		shell_exec("logger capture.php start");
+		shell_exec("/usr/sbin/reload_fw");
 		shell_exec("$capture start > /dev/null &");
 	}
 	else if(isset($_GET["stop"])) {
+		shell_exec("logger capture.php stop");
 		shell_exec("$capture stop");
 	}
 	else if(isset($_GET["restart"])) {
-		shell_exec("$capture restart");
-	}
+		shell_exec("logger capture.php restart");
+		shell_exec("$capture stop");
+		shell_exec("/usr/sbin/reload_fw");
+		shell_exec("$capture start > /dev/null &");
+	} else {
+		shell_exec("logger No argument found for capture.php");
+        }
 
 ?>
 
