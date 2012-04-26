@@ -45,6 +45,9 @@ use strict;
 
 # 2012 Feb 22 - JAA
 # Handle case where images don't start until after midnight.
+# 
+# 2012 Apr 26 - JAA
+# Upgrade to handle 4 images for TORERO
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -81,8 +84,10 @@ my $startNum = -1;
 my %possible_keywords = ( # value = description, default
     "includeData" => ("yes or no"),
     "netcdfFile" => ("can use #### to indicate flight, e.g. rf01"),
+    "gravityD" => ("NorthEast, East, etc. Default = NorthEast"),
     "cameraName" => ("knownCameras"),
     "imageDirectory" => ("can use #### to indicate flight, e.g. rf01"),
+    "gravity" => ("NorthWest, North, etc. Default = NorthWest for 1-2 images, North for more"),
     "movieDirectory" => ("location to write annotated images and final movies"),
     "overlayImageTime" => ("yes or no"),
     "outputResolution" => ("size of entire image in pixels, e.g. num x num"),
@@ -101,6 +106,8 @@ my %possible_keywords = ( # value = description, default
     "gravity2" => ("SouthWest, North, etc"),
     "imageDir3" => ("can use #### to indicate flight, e.g. rf01"),
     "gravity3" => ("SouthWest, North, etc"),
+    "imageDir4" => ("can use #### to indicate flight, e.g. rf01"),
+    "gravity4" => ("SouthWest, North, etc"),
 );
 
 my @flightData;
@@ -336,13 +343,18 @@ foreach my $fileName (@jpegFiles) {
 	    $keywords->{gamma},$keywords->{sharpen},$inputImage);
 
 	my $gravity;
-	if ($keywords->{numCameras} > 3) {
+	if ($keywords->{numCameras} > 4) {
 	    print "Code only handles up to three cameras. Update code!\n";
 	    exit(1);
 	}
-	if ($keywords->{numCameras} == 1) {$gravity = 'NorthWest'};
-	if ($keywords->{numCameras} == 2) {$gravity = 'NorthWest'};
-	if ($keywords->{numCameras} == 3) {$gravity = 'North'};
+        if ($keywords->{gravity}) {
+	    $gravity = $keywords->{gravity}
+	} else {
+	    if ($keywords->{numCameras} == 1) {$gravity = 'NorthWest'};
+	    if ($keywords->{numCameras} == 2) {$gravity = 'NorthWest'};
+	    if ($keywords->{numCameras} == 3) {$gravity = 'North'};
+	    if ($keywords->{numCameras} == 4) {$gravity = 'North'};
+	}
 	
 	# Get image time so can later pull flight data for this time from data
 	# file.
@@ -484,10 +496,13 @@ foreach my $fileName (@jpegFiles) {
 	    # Composite all three images (variable values, labels, and camera 
 	    # image). Put the values along the lower right side of the image
 	    #################	
-	
-	    $outputImage->Composite( image=>$valueImage, gravity=>'NorthEast');
+
+            if (!$keywords->{gravityD}) {$gravity = 'NorthEast';}
+	    $gravity = $keywords->{"gravityD"}; 
+	    $outputImage->Composite( image=>$valueImage, gravity=>$gravity);
         }
-	    $outputImage->Composite( image=>$labelImage, gravity=>'NorthEast');
+	    $gravity = $keywords->{"gravityD"}; 
+	    $outputImage->Composite( image=>$labelImage, gravity=>$gravity);
 
 	# write out the image.
 	my $outputImageName=
