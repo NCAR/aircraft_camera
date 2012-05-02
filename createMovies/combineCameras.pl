@@ -48,6 +48,9 @@ use strict;
 # 
 # 2012 Apr 26 - JAA
 # Upgrade to handle 4 images for TORERO
+#
+# 2012 May 1 - JAA CBS 
+# Added option to overlay imagePointing on each camera image. 
 # ------------------------------------------------------------------------------
 # Files used:
 #	parameters file specified on command line.
@@ -90,6 +93,7 @@ my %possible_keywords = ( # value = description, default
     "gravity" => ("NorthWest, North, etc. Default = NorthWest for 1-2 images, North for more"),
     "movieDirectory" => ("location to write annotated images and final movies"),
     "overlayImageTime" => ("yes or no"),
+    "overlayImagePointing" => ("yes or no"),
     "outputResolution" => ("size of entire image in pixels, e.g. num x num"),
     "outputWidth" => ("Width of data portion of image; default = 200"),
     "outputFrameRate" => ("frames per second, Playback at 15 fps when recorded at 1 fps."),
@@ -140,7 +144,7 @@ if ( (scalar(@ARGV) < 2) || (scalar(@ARGV) > 3)  || ($ARGV[0] eq "-h") ) {
 
 # Initialize image objects. 
 my $inputImage = Image::Magick->new();		# Forward image read in.
-my $Image = Image::Magick->new();		# Downward image read in.
+my $Image = Image::Magick->new();		# Additional image(s) read in.
 my $outputImage = Image::Magick->new();		# Image to be written out.
 my $labelImage = Image::Magick->new();		# Image of variable labels.
 my $valueImage = Image::Magick->new();		# Image of variable values.
@@ -344,7 +348,7 @@ foreach my $fileName (@jpegFiles) {
 
 	my $gravity;
 	if ($keywords->{numCameras} > 4) {
-	    print "Code only handles up to three cameras. Update code!\n";
+	    print "Code only handles up to four cameras. Update code!\n";
 	    exit(1);
 	}
         if ($keywords->{gravity}) {
@@ -386,6 +390,14 @@ foreach my $fileName (@jpegFiles) {
 	    $inputImage->Annotate(gravity=>'SouthWest', font=>"Helvetica-Bold",
 	        undercolor=>'grey85', pointsize=>12, text=>$imageDateTime);
 	}
+	if ($keywords->{overlayImagePointing} eq "yes") {
+	    my $dir = $keywords->{imageDirectory};
+	    my @parts = split('/',$dir);
+	    my $pointing = pop(@parts);
+	    chomp $pointing;
+	    $inputImage->Annotate(gravity=>'NorthEast', font=>"Helvetica-Bold",
+	        undercolor=>'grey85', pointsize=>12, text=>" ".$pointing." ");
+	}
 	$outputImage->Composite( image=>$inputImage, gravity=>$gravity);
 
 	# Now process the rest of the cameras (if extant).
@@ -397,6 +409,15 @@ foreach my $fileName (@jpegFiles) {
                 &adjust_camera_image($keywords->{crop},$keywords->{scale},
 	            $keywords->{gamma},$keywords->{sharpen},$Image);
 		$gravity = $keywords->{"gravity$addtl_cameras"}; 
+	        
+		if ($keywords->{overlayImagePointing} eq "yes") {
+	    	   my $dir = $keywords->{"imageDir$addtl_cameras"};
+	    	   my @parts = split('/',$dir);
+	    	   my $pointing = pop(@parts);
+	    	   chomp $pointing;
+	    	   $Image->Annotate(gravity=>'NorthEast', font=>"Helvetica-Bold",
+	             undercolor=>'grey85', pointsize=>12, text=>" ".$pointing." ");
+		}
 	        $outputImage->Composite( image=>$Image, gravity=>$gravity);
 	        @$Image = ();
 
