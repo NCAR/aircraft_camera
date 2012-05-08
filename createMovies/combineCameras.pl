@@ -81,6 +81,7 @@ my @knownCameras = ("Axis","Flea","Down_Flea");
 # Set defaults for variables
 my $annotationFont = "Courier-Bold";
 my $fontSize = "13";
+my $fontColor = "orange";
 my $startNum = -1;
 
 # List possible keywords for use in ParamFile
@@ -511,7 +512,7 @@ foreach my $fileName (@jpegFiles) {
 	    # Add an image consisting of the variable values to the bottom,
 	    # right so can overlay with the existing labelImage
 	    $valueImage->Annotate( font=>$annotationFont, pointsize=>$fontSize, x=>15,
-	        weight=>500, gravity=>'SouthEast', fill=>'black',text=>"$theText");
+	        weight=>500, gravity=>'SouthEast', fill=>"$fontColor",text=>"$theText");
 
 	    #################	
 	    # Composite all three images (variable values, labels, and camera 
@@ -833,11 +834,13 @@ sub write_vars2labelImage() {
   $labelImage->ReadImage('xc:none');		# Transparent canvas
 
   # Header text floats to the top, left of the label image.
-  $labelImage->Annotate( font=>$annotationFont, pointsize=>$fontSize, weight=>500, gravity=>'NorthWest', fill=>'black',text=>"$headerText");
+  $labelImage->Annotate( font=>$annotationFont, pointsize=>$fontSize,
+      weight=>500, gravity=>'NorthWest', fill=>"$fontColor",text=>"$headerText");
 
   # Parameter names float to the bottom, left of the label image.
   # Parameter values will be added directly across, i.e. bottom, right.
-  $labelImage->Annotate( font=>$annotationFont, pointsize=>$fontSize, weight=>500, gravity=>'SouthWest', fill=>'black',text=>"$theText");
+  $labelImage->Annotate( font=>$annotationFont, pointsize=>$fontSize,
+      weight=>500, gravity=>'SouthWest', fill=>"$fontColor",text=>"$theText");
 
   close (FLIGHT_DATA_FILE);		# Don't need the file any longer.
 
