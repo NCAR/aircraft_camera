@@ -96,7 +96,7 @@ my %possible_keywords = ( # value = description, default
     "overlayImageTime" => ("yes or no"),
     "overlayImagePointing" => ("yes or no"),
     "outputResolution" => ("size of entire image in pixels, e.g. num x num"),
-    "outputResolutionD" => ("size of entire image with data in pixels, e.g. num x num"),
+    "outputResolutionD" => ("size of entire image with data in pixels, e.g. num x num. For 3-image layout, set this = to outputResolution"),
     "outputWidth" => ("Width of data portion of image; default = 200"),
     "outputFrameRate" => ("frames per second, Playback at 15 fps when recorded at 1 fps."),
     "scale" => (" num x num pixels, size of each camera image"),
