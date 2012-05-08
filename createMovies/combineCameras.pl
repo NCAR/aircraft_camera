@@ -81,7 +81,7 @@ my @knownCameras = ("Axis","Flea","Down_Flea");
 # Set defaults for variables
 my $annotationFont = "Courier-Bold";
 my $fontSize = "13";
-my $fontColor = "orange";
+my $fontColor = "black";
 my $startNum = -1;
 
 # List possible keywords for use in ParamFile
@@ -90,12 +90,13 @@ my %possible_keywords = ( # value = description, default
     "netcdfFile" => ("can use #### to indicate flight, e.g. rf01"),
     "gravityD" => ("NorthEast, East, etc. Default = NorthEast"),
     "cameraName" => ("knownCameras"),
-    "imageDirectory" => ("can use #### to indicate flight, e.g. rf01"),
-    "gravity" => ("NorthWest, North, etc. Default = NorthWest for 1-2 images, North for more"),
+    "imageDir1" => ("can use #### to indicate flight, e.g. rf01"),
+    "gravity1" => ("NorthWest, North, etc. Default = NorthWest for 1-2 images, North for more"),
     "movieDirectory" => ("location to write annotated images and final movies"),
     "overlayImageTime" => ("yes or no"),
     "overlayImagePointing" => ("yes or no"),
     "outputResolution" => ("size of entire image in pixels, e.g. num x num"),
+    "outputResolutionD" => ("size of entire image with data in pixels, e.g. num x num"),
     "outputWidth" => ("Width of data portion of image; default = 200"),
     "outputFrameRate" => ("frames per second, Playback at 15 fps when recorded at 1 fps."),
     "scale" => (" num x num pixels, size of each camera image"),
@@ -144,9 +145,9 @@ if ( (scalar(@ARGV) < 2) || (scalar(@ARGV) > 3)  || ($ARGV[0] eq "-h") ) {
 }
 
 # Initialize image objects. 
-my $inputImage = Image::Magick->new();		# Forward image read in.
-my $Image = Image::Magick->new();		# Additional image(s) read in.
-my $outputImage = Image::Magick->new();		# Image to be written out.
+my $Image = Image::Magick->new();		# Image(s) read in.
+my $outputImage = Image::Magick->new();		# Final Image to be written out.
+my $outputImageD = Image::Magick->new();	# Temp Image for adding data.
 my $labelImage = Image::Magick->new();		# Image of variable labels.
 my $valueImage = Image::Magick->new();		# Image of variable values.
 
@@ -261,8 +262,8 @@ if ($keywords->{includeData} eq "yes") {
 # -------------------------------------------------------------------
 
 # Open the directory and read the list of JPEG files into @jpegFiles array.
-opendir(IMAGE_DIRECTORY, "$keywords->{imageDirectory}") 
-	|| die "Image directory $keywords->{imageDirectory} not found";
+opendir(IMAGE_DIRECTORY, "$keywords->{imageDir1}") 
+	|| die "Image directory $keywords->{imageDir1} not found";
 my @tempList = grep{/.jpg/} readdir IMAGE_DIRECTORY;
 closedir IMAGE_DIRECTORY;
 
@@ -275,7 +276,7 @@ print "Number of images to process = $numFiles\n";
 
 # If not including netCDF data then read flight number from image dir path.
 if ($keywords->{includeData} ne "yes") {
-    $flightNumber = $keywords->{imageDirectory};
+    $flightNumber = $keywords->{imageDir1};
     $flightNumber =~ s/^.*flight_number_(....).*/$1/;
 }
 
@@ -330,30 +331,24 @@ foreach my $fileName (@jpegFiles) {
 
 
 	# clear the images, set output attributes, then read and scale an image
-	@$outputImage = ();
-	@$inputImage = ();
-	@$valueImage = ();
 	@$Image = ();
+	@$outputImage = ();
+	@$outputImageD = ();
+	@$valueImage = ();
 	
 	# Size output image with white background (canvas).
 	$outputImage->Set(size=>$keywords->{outputResolution}, quality=>90);
 	$outputImage->ReadImage('xc:white');	# White canvas
-
-	# --------------------------------------------------------------
-	# Primary image - usually the forward image #
-	# This is the image set by imageDirectory parameter in ParamFile
-	# --------------------------------------------------------------
-	$inputImage = &get_camera_image($keywords->{imageDirectory}, $fileName);
-        &adjust_camera_image($keywords->{crop},$keywords->{scale},
-	    $keywords->{gamma},$keywords->{sharpen},$inputImage);
+	$outputImageD->Set(size=>$keywords->{outputResolutionD}, quality=>90);
+	$outputImageD->ReadImage('xc:white');	# White canvas
 
 	my $gravity;
 	if ($keywords->{numCameras} > 4) {
 	    print "Code only handles up to four cameras. Update code!\n";
 	    exit(1);
 	}
-        if ($keywords->{gravity}) {
-	    $gravity = $keywords->{gravity}
+        if ($keywords->{gravity1}) {
+	    $gravity = $keywords->{gravity1}
 	} else {
 	    if ($keywords->{numCameras} == 1) {$gravity = 'NorthWest'};
 	    if ($keywords->{numCameras} == 2) {$gravity = 'NorthWest'};
@@ -375,57 +370,50 @@ foreach my $fileName (@jpegFiles) {
 	my $imageTime_withColons=substr($imageTime,0,2).':'.
 		substr($imageTime,2,2).':'.substr($imageTime,4,2);
 
-	# If not including netCDF data then determine image time from image names.
+	# If not including netCDF data then determine image time from image 
+	# names.
 	# Determine start time here and end time at end of loop.
 	my $imageDate = substr($fileName,-17,6);
 	if ($keywords->{includeData} ne "yes" && $fileNum == 1) {
 	    $outputFileTimes = $imageDate.'.'.$imageTime;
 	}
 
-
 	print "image $fileNum/$numFiles: $fileName $imageTime\n";
 
-	if ($keywords->{overlayImageTime} eq "yes") {
-	    my $imageDateTime = $fileName;
-	    $imageDateTime =~ s/.jpg//;
-	    $inputImage->Annotate(gravity=>'SouthWest', font=>"Helvetica-Bold",
-	        undercolor=>'grey85', pointsize=>12, text=>$imageDateTime);
-	}
-	if ($keywords->{overlayImagePointing} eq "yes") {
-	    my $dir = $keywords->{imageDirectory};
-	    my @parts = split('/',$dir);
-	    my $pointing = pop(@parts);
-	    chomp $pointing;
-	    $inputImage->Annotate(gravity=>'NorthEast', font=>"Helvetica-Bold",
-	        undercolor=>'grey85', pointsize=>12, text=>" ".$pointing." ");
-	}
-	$outputImage->Composite( image=>$inputImage, gravity=>$gravity);
-
-	# Now process the rest of the cameras (if extant).
-	if ($keywords->{numCameras} > 1) {
-	    my $addtl_cameras = 2;
-	    while ($addtl_cameras <= $keywords->{numCameras}) {
-                my $Directory = $keywords->{"imageDir$addtl_cameras"};
-	        $Image = &get_camera_image($Directory, $fileName);
-                &adjust_camera_image($keywords->{crop},$keywords->{scale},
-	            $keywords->{gamma},$keywords->{sharpen},$Image);
-		$gravity = $keywords->{"gravity$addtl_cameras"}; 
+	# Now process the cameras.
+	my $addtl_cameras = 1;
+	while ($addtl_cameras <= $keywords->{numCameras}) {
+            my $Directory = $keywords->{"imageDir$addtl_cameras"};
+	    $Image = &get_camera_image($Directory, $fileName);
+            &adjust_camera_image($keywords->{crop},$keywords->{scale},
+	        $keywords->{gamma},$keywords->{sharpen},$Image);
+	    $gravity = $keywords->{"gravity$addtl_cameras"}; 
 	        
-		if ($keywords->{overlayImagePointing} eq "yes") {
-	    	   my $dir = $keywords->{"imageDir$addtl_cameras"};
-	    	   my @parts = split('/',$dir);
-	    	   my $pointing = pop(@parts);
-	    	   chomp $pointing;
-	    	   $Image->Annotate(gravity=>'NorthEast', font=>"Helvetica-Bold",
-	             undercolor=>'grey85', pointsize=>12, text=>" ".$pointing." ");
-		}
-	        $outputImage->Composite( image=>$Image, gravity=>$gravity);
-	        @$Image = ();
-
-		$addtl_cameras += 1;
+	    if ($keywords->{overlayImageTime} eq "yes") {
+	        my $imageDateTime = $fileName;
+	        $imageDateTime =~ s/.jpg//;
+	        $Image->Annotate(gravity=>'SouthWest', font=>"Helvetica-Bold",
+	            undercolor=>'grey85', pointsize=>12, text=>$imageDateTime);
 	    }
+
+	    if ($keywords->{overlayImagePointing} eq "yes") {
+	        my $dir = $keywords->{"imageDir$addtl_cameras"};
+	        my @parts = split('/',$dir);
+	        my $pointing = pop(@parts);
+	        chomp $pointing;
+	        $Image->Annotate(gravity=>'NorthEast', font=>"Helvetica-Bold",
+	          undercolor=>'grey85', pointsize=>12, text=>" ".$pointing." ");
+	    }
+	    $outputImage->Composite( image=>$Image, gravity=>$gravity);
+	    @$Image = ();
+
+	    $addtl_cameras += 1;
 	}
 
+
+	# Determine the output image filename.
+	my $outputImageName=
+	    sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
 
 	###############
 	# flight data #
@@ -521,15 +509,15 @@ foreach my $fileName (@jpegFiles) {
 
             if (!$keywords->{gravityD}) {$gravity = 'NorthEast';}
 	    $gravity = $keywords->{"gravityD"}; 
-	    $outputImage->Composite( image=>$valueImage, gravity=>$gravity);
-        }
-	    $gravity = $keywords->{"gravityD"}; 
-	    $outputImage->Composite( image=>$labelImage, gravity=>$gravity);
-
-	# write out the image.
-	my $outputImageName=
-	    sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
-	$outputImage->write($outputImageName);
+	    $outputImageD->Composite( image=>$outputImage, gravity=>'West');
+	    $outputImageD->Composite( image=>$valueImage, gravity=>$gravity);
+	    $outputImageD->Composite( image=>$labelImage, gravity=>$gravity);
+	    # write out the image.
+	    $outputImageD->write($outputImageName);
+        } else {
+	    # write out the image.
+	    $outputImage->write($outputImageName);
+	}
 }
 
 # If not including netCDF data then determine image time from image names.
