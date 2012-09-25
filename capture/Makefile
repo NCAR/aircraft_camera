@@ -1,13 +1,13 @@
 OBJECTS = main.o getIMG.o parseFile.o writejpeg.o writepng.o pgFuncs.o multicast.o xmp.o
-CFLAGS = -Wall -Wextra -g  #-DDEBUG
-CXXFLAGS = -Wall -Wextra -g
+CFLAGS = -Wall -Wextra -g  -pg #-DDEBUG
+CXXFLAGS = -Wall -Wextra -g -pg
 DCLIB = -ldc1394
 LIBS = $(DCLIB) -ljpeg -lpng -lpq -lexiv2
 
 all: capture capture_reset_bus
 
 capture: $(OBJECTS) 
-	$(CXX) -g -o capture $(OBJECTS) $(LIBS) $(FLAGS)
+	$(CXX) -pg -g -o capture $(OBJECTS) $(LIBS) $(FLAGS)
 
 main.o: getIMG.h
 getIMG.o: getIMG.h writejpeg.h writepng.h

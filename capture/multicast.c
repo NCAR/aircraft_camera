@@ -3,6 +3,8 @@
 #define MULTICAST_PORT 30001
 #define MULTICAST_GROUP "239.0.0.10"
 
+static long count=0;
+
 void multicast_status_init(status_t *status, camConf_t **camArray, int numCams) {
 /* This function allocates memory for all of the data contained in the status 
 	structure. The size of memory needed varies by the number of cameras on 
@@ -145,7 +147,10 @@ void multicast_send_packet(char *packet, char *group, int port) {
 	/* now just sendto() our destination! */
 	if (sendto(fd,packet,strlen(packet),0,(struct sockaddr *) &addr,
 	sizeof(addr)) < 0) {
-		syslog(LOG_ERR, "failed to send Multicast status");
+                count++;
+                if (count%1000 == 0)
+		    syslog(LOG_ERR, "failed to send Multicast status %ld times",count);
+                close(fd);
 		return;
 	}
 

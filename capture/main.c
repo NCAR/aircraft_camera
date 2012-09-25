@@ -165,7 +165,10 @@ int main(int argc, char *argv[])
 
                 /*  Bring all the threads back together */
                 for (i=0; i<camCount; i++) {
-			pthread_join(camThreads[i], NULL);
+			int jErr = pthread_join(camThreads[i], NULL);
+                        if (jErr != 0) {
+				syslog(LOG_WARNING, "ERROR: joining of threads failed with error: %d\n", jErr);
+                        }
                 }
 
 		/* Update database if connected */
@@ -344,6 +347,8 @@ void finishUp(int sig){
 			syslog(LOG_WARNING, "Should not have gotten here...  exiting.");
 	}
 	interrupted = 1;
+
+	exit(1);
 }
 
 void getTime(char *s1, char *s2){
