@@ -1,6 +1,6 @@
 Summary: ieee1394 camera image capture/archive program
 Name: capture-camserver
-Version: 0.7
+Version: 1.0
 Release: 1
 Group: Applications/Text
 Source: %{name}-%{version}.tar.gz
@@ -75,6 +75,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0774,ads,apache) /usr/sbin/reload_fw
 
 %changelog
+* Fri May 29 2013 <cjw@ucar.edu> 1.0-1
+- Up version number.  Current build is out of date.
+
 * Fri Mar 23 2012 <tbaltzer@ucar.edu> 0.7-1
 - cjw changed capture stop/start to unload and reload firewire modules
 -    this is the reload_fw program (source unfound - use strings reload_fw to see what it does)
