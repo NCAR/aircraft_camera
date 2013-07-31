@@ -1,7 +1,7 @@
 Summary: ieee1394 camera image capture/archive program
 Name: capture-camserver
 Version: 1.0
-Release: 1
+Release: 2
 Group: Applications/Text
 Source: %{name}-%{version}.tar.gz
 License: none
@@ -34,14 +34,14 @@ cp capture.conf $RPM_BUILD_ROOT/etc/
 cp capture_reset_bus $RPM_BUILD_ROOT/usr/sbin/
 cp capture_monitor.sh $RPM_BUILD_ROOT/usr/sbin/
 cp reload_fw $RPM_BUILD_ROOT/usr/sbin/
-cp capture.sh $RPM_BUILD_ROOT/etc/init.d/capture
+cp capture.sh $RPM_BUILD_ROOT/etc/init.d/capture.sh
 cp capture.php $RPM_BUILD_ROOT/var/www/html/camera/
 
 %post
 chkconfig httpd on
 
 #setup init to kill capture at runlevel 3
-ln -s /etc/init.d/capture /etc/rc.d/rc3.d/K99capture
+ln -s /etc/init.d/capture.sh /etc/rc.d/rc3.d/K99capture.sh
 
 #setup automount so that accam:/mnt/cam/images => acserver:/mnt/r2/camera_images
 echo "/mnt/acserver	/etc/local/acserver.map" >> /etc/auto.master
@@ -68,13 +68,19 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %attr(0664,ads,apache) /etc/capture.conf
 %attr(0775,ads,apache) %{_bindir}/capture
 %attr(644,root,root) %doc %{_mandir}/man1/capture.1.gz
-%attr(0774,ads,apache) /etc/init.d/capture
+%attr(0774,ads,apache) /etc/init.d/capture.sh
 %attr(0664,ads,apache) /var/www/html/camera/capture.php
 %attr(0774,ads,apache) /usr/sbin/capture_monitor.sh
 %attr(0774,ads,apache) /usr/sbin/capture_reset_bus
 %attr(0774,ads,apache) /usr/sbin/reload_fw
 
 %changelog
+* Sun Jun 2 2013 <tbaltzer@ucar.edu> 1.0-2
+- Needed to have add .sh to /etc/init.d/capture so that when restarting and checking for /usr/bin/capture, 
+-     we don't accidently find ourself and think that capture is still running
+- Also fixed bug for test being for capture_monitor, since it was already running in a restart instance
+-     I'm not sure if this ever worked.
+
 * Fri May 29 2013 <cjw@ucar.edu> 1.0-1
 - Up version number.  Current build is out of date.
 

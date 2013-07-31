@@ -5,15 +5,18 @@
 #set these vars correctly for your setup
 dbHOST="acserver"                      # real-time postgres db hostname
 capture="/usr/bin/capture"                       # path to capture program
-LOC='/mnt/acserver/r1/camera_images/flight_number_'      #location where images will be stored
+LOC='/mnt/r1/camera_images/flight_number_'      #location where images will be stored
 CONF='/etc/capture.conf'                   #location of camera configuration file
 monitor_script="/usr/sbin/capture_monitor.sh $dbHOST $0"
 logit="logger -t capture_init -s -p local1.notice"         # command to send message to syslog 
 
 start() {
 
+        capPS=`ps h -C capture`
+        $logit "capture ps: $capPS"
+
 	# make sure no other capture process is running 
-	if ! ps h -C capture_monitor.sh > /dev/null
+	if ! ps h -C capture > /dev/null
 	then
 		$logit "Starting capture - dbHOST: $dbHOST"
 		$logit "Starting capture - LOC: $LOC"
