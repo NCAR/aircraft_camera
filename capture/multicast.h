@@ -8,6 +8,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <netdb.h>
 #include <unistd.h>
 #include <syslog.h>
 #include "parseFile.h"
@@ -48,6 +51,6 @@ void multicast_status_init(status_t *status, camConf_t **camArray, int numCams);
 void multicast_clean_up(status_t *status);
 int multicast_send_status(status_t *status);
 char *multicast_make_packet(status_t *status);
-void multicast_send_packet(char *packet, char *group, int port);
+void multicast_send_packet(char *packet);
 
 #endif
