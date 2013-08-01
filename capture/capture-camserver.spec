@@ -33,7 +33,6 @@ cp capture.1.gz $RPM_BUILD_ROOT/%{_mandir}/man1/
 cp capture.conf $RPM_BUILD_ROOT/etc/
 cp capture_reset_bus $RPM_BUILD_ROOT/usr/sbin/
 cp capture_monitor.sh $RPM_BUILD_ROOT/usr/sbin/
-cp reload_fw $RPM_BUILD_ROOT/usr/sbin/
 cp capture.sh $RPM_BUILD_ROOT/etc/init.d/capture.sh
 cp capture.php $RPM_BUILD_ROOT/var/www/html/camera/
 
@@ -72,11 +71,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0664,ads,apache) /var/www/html/camera/capture.php
 %attr(0774,ads,apache) /usr/sbin/capture_monitor.sh
 %attr(0774,ads,apache) /usr/sbin/capture_reset_bus
-%attr(0774,ads,apache) /usr/sbin/reload_fw
 
 %changelog
 * Thu Aug 1 2013 <cjw@ucar.edu> 1.1-1
 - Only multicast status to the data net (192.168.184.x).
+- remove reload_fw
 
 * Sun Jun 2 2013 <tbaltzer@ucar.edu> 1.0-2
 - Needed to have add .sh to /etc/init.d/capture so that when restarting and checking for /usr/bin/capture, 
