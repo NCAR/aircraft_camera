@@ -1,7 +1,7 @@
 Summary: ieee1394 camera image capture/archive program
 Name: capture-camserver
-Version: 1.0
-Release: 2
+Version: 1.1
+Release: 1
 Group: Applications/Text
 Source: %{name}-%{version}.tar.gz
 License: none
@@ -75,13 +75,16 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0774,ads,apache) /usr/sbin/reload_fw
 
 %changelog
+* Thu Aug 1 2013 <cjw@ucar.edu> 1.1-1
+- Only multicast status to the data net (192.168.184.x).
+
 * Sun Jun 2 2013 <tbaltzer@ucar.edu> 1.0-2
 - Needed to have add .sh to /etc/init.d/capture so that when restarting and checking for /usr/bin/capture, 
 -     we don't accidently find ourself and think that capture is still running
 - Also fixed bug for test being for capture_monitor, since it was already running in a restart instance
 -     I'm not sure if this ever worked.
 
-* Fri May 29 2013 <cjw@ucar.edu> 1.0-1
+* Wed May 29 2013 <cjw@ucar.edu> 1.0-1
 - Up version number.  Current build is out of date.
 
 * Fri Mar 23 2012 <tbaltzer@ucar.edu> 0.7-1
