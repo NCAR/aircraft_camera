@@ -55,7 +55,7 @@ void multicast_status_init(status_t *status, camConf_t **camArray, int numCams)
 
   for ( cursor = addrs; cursor != NULL && fd < 0; cursor = cursor->ifa_next )
   {
-    if ( cursor->ifa_addr->sa_family == AF_INET
+    if ( cursor->ifa_addr && cursor->ifa_addr->sa_family == AF_INET
             && !(cursor->ifa_flags & IFF_LOOPBACK)
             && !(cursor->ifa_flags & IFF_POINTOPOINT)
             &&  (cursor->ifa_flags & IFF_MULTICAST) )
