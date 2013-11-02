@@ -1,7 +1,7 @@
 Summary: ieee1394 camera image capture/archive program
 Name: capture-camserver
 Version: 1.1
-Release: 1
+Release: 2
 Group: Applications/Text
 Source: %{name}-%{version}.tar.gz
 License: none
@@ -73,6 +73,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0774,ads,apache) /usr/sbin/capture_reset_bus
 
 %changelog
+* Thu Sep 26 2013 <cjw@ucar.edu> 1.1-2
+- Null pointer bug fix.
+
 * Thu Aug 1 2013 <cjw@ucar.edu> 1.1-1
 - Only multicast status to the data net (192.168.184.x).
 - remove reload_fw
