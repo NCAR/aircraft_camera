@@ -223,6 +223,20 @@ if ($checkGnd) {
 	        $netCDF = "$_/$project$flight.nc";
 	    }
 	    close(DATA);
+	    if (-e $netCDF) {
+	        print "Use data file ".$netCDF."\n";
+	    }
+	}
+
+	# We are inconsistent. Sometimes field files are in $DATA_DIR. Sometimes they are in
+	# $DATA_DIR/$project.
+	unless (-e $netCDF) {
+	    open(DATA, 'echo $DATA_DIR |');
+	    while (<DATA>) {
+		chomp;
+	        $netCDF = "$_/$project/$project$flight.nc";
+	    }
+	    close(DATA);
 	    print "Use data file ".$netCDF."\n";
 	}
 	
