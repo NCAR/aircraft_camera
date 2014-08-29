@@ -37,6 +37,7 @@ our $dir = "";
 our $checkCont = 1;
 our $checkDark = 1;
 our $checkGnd = 1;
+our $move;
 #Ajusting these values will change what images the script removes (higher values = more bright)
 our @threshold;
 our $listfiles = 1;
@@ -84,6 +85,7 @@ if (@ARGV <= 0) {
 		-f		Force (Skips confimation and does not display list of dark images)
 		-r		PERMANATLY REMOVE (normally dark images are moded to
 				target_DIR/removed/) [NOT YET IMPLEMENTED]
+		-Y		Don't prompt before moving the images
 		-tdir:removed	Sets name of subdir that dark images are moved to
 				(Default: removed) [NOT YET IMPLEMENTED]
 		-s:##		File skipping, Checks every ## files and assumes the images
@@ -115,6 +117,7 @@ else {
 		elsif ($a eq "-nolist") { $listfiles = 0; }
 		elsif ($a eq "-f") {$force = 1;}
 		elsif ($a eq "-r") { } #NOT IMPLEMENTED 
+		elsif ($a eq "-Y") {$move = "\n";}
 		elsif ($a =~ m/-tdir:(.*)/) {} #NOT IMPLEMENTED
 		elsif ($a =~ m/-s:(\d+)/) {$speedhack = $1; print "SpeedHack set\n";}
 		elsif ($a =~ m/-s%:(\d+)/) {} #NOT IMPLEMENTED
@@ -478,10 +481,13 @@ sub Remove
 		
 		#print "Takeoff: "; PrintDate(@{$date[0]}); print " | "; PrintDate(DateFromFile($files[0])); print "\n";
 		#print "Landing: "; PrintDate(@{$date[1]}); print " | "; PrintDate(DateFromFile($files[$#files])); print "\n";
+		
+		if (!($move)) {
 
-		print "To continue press enter otherwise enter any value:";
-		#get user input (this will capture trailing \n)
-		$cont = <STDIN>;
+			print "To continue press enter otherwise enter any value:";
+			#get user input (this will capture trailing \n)
+			$cont = <STDIN>;
+		}
 	}
 
 	if ($cont eq "\n") {
