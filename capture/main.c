@@ -347,8 +347,6 @@ void finishUp(int sig){
 			syslog(LOG_WARNING, "Should not have gotten here...  exiting.");
 	}
 	interrupted = 1;
-
-	exit(1);
 }
 
 void getTime(char *s1, char *s2){
@@ -430,7 +428,6 @@ void printArgsError(char *cmd){
 	printf("%s [-c <configFile>] [-f <file prefix>] [-d <db host>] <flightnumber>\n", cmd);
 	printf("\tNOTE: you must specify a flight number or use -d to get from database\n\n");
 	exit(1);
-
 }
 
 void * worker(void *arg[])
