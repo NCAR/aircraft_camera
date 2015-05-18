@@ -1,19 +1,19 @@
 #!/bin/bash
 
-#This is the initscript for the capture program
+# This is the initscript for the capture program
 
-#set these vars correctly for your setup
-dbHOST="acserver"                      # real-time postgres db hostname
-capture="/usr/bin/capture"                       # path to capture program
-LOC='/mnt/r1/camera_images/flight_number_'      #location where images will be stored
-CONF='/etc/capture.conf'                   #location of camera configuration file
+# Set these vars correctly for your setup
+dbHOST='acserver'				# real-time postgres db hostname
+capture='/usr/bin/capture'			# path to capture program
+LOC=`get_ac_config.py cameras.path`		#location where images will be stored
+CONF='/etc/capture.conf'			#location of camera configuration file
 monitor_script="/usr/sbin/capture_monitor.sh $dbHOST $0"
-logit="logger -t capture_init -s -p local1.notice"         # command to send message to syslog 
+logit="logger -t capture_init -s -p local1.notice"	# command to send message to syslog 
 
 start() {
 
-        capPS=`ps h -C capture`
-        $logit "capture ps: $capPS"
+	capPS=`ps h -C capture`
+	$logit "capture ps: $capPS"
 
 	# make sure no other capture process is running 
 	if ! ps h -C capture > /dev/null
@@ -30,9 +30,9 @@ start() {
 
 	        #launch a monitor script, unless start was called by an already running monitor
 	        if [ "$1" = "launch" ]; then
-        	    $monitor_script $cap_pid &	 
+			$monitor_script $cap_pid &	 
 				mon_pid=$!
-		    $logit "started monitor [pid: $mon_pid]"
+			$logit "started monitor [pid: $mon_pid]"
 	        fi
 
 	else
@@ -44,15 +44,15 @@ start() {
 
 stop() {
 
-	#send ctrl-c signal to allow program to clean up
+	# send ctrl-c signal to allow program to clean up
 #	ps h -C $capture > /dev/null && killall -HUP $capture
- 	killall -HUP $capture
+	killall -HUP $capture
 	sleep 1
- 	killall -9 $capture
+	killall -9 $capture
 
 	#kill monitor script
 #	ps h -C capture_monitor.sh > /dev/null && killall capture_monitor.sh
- 	killall capture_monitor.sh
+	killall capture_monitor.sh
 
 	$logit "stopped cams"
 }
@@ -87,7 +87,6 @@ status(){
 	echo -e "\tImage output directory:\t$LOC"
 	echo -e "\tCapture Config file:\t$CONF"
 	echo
-
 }
 
 case "$1" in
