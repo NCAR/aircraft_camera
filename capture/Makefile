@@ -7,7 +7,7 @@ LIBS = $(DCLIB) -ljpeg -lpng -lpq -lexiv2
 all: capture capture_reset_bus
 
 capture: $(OBJECTS) 
-	$(CXX) -pg -g -o capture $(OBJECTS) $(LIBS) $(FLAGS)
+	$(CXX) -O2 -g -o capture $(OBJECTS) $(LIBS) $(FLAGS)
 
 main.o: getIMG.h
 getIMG.o: getIMG.h writejpeg.h writepng.h
@@ -23,4 +23,3 @@ capture_reset_bus: reset_bus.c
 
 clean:
 	rm -f $(OBJECTS) capture capture_reset_bus
-
