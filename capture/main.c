@@ -63,12 +63,12 @@ int main(int argc, char *argv[])
 	/* declare vars */
 	int i, useDB = 1, getFNfromDB = 0, night=0, camCount=0, waitbus=0, rescanCount=0;
 	char timeStr[20];
-	status_t statMC;				//struct to hold cumulative status data
-	camConf_t **camArray = NULL;	//array to hold settings from conf file
-	PGconn *conn; 					//postgresql database connection
-	pid_t cpid;						//PID for timing process
-	dc1394_t * d;					//dc1394 base class (for scanning the bus)
-	char *conf, *prefix, *dbHost, *flNum;	//ptrs for command line arguements
+	status_t statMC;			// struct to hold cumulative status data
+	camConf_t **camArray = NULL;		// array to hold settings from conf file
+	PGconn *conn; 				// postgresql database connection
+	pid_t cpid;				// PID for timing process
+	dc1394_t * d;				// dc1394 base class (for scanning the bus)
+	char *conf, *prefix, *dbHost, *flNum;	// ptrs for command line arguements
 
 	/* set up handler for signal */
 	signal(SIGINT, &finishUp);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 	useDB = connectDB(&conn, dbHost, getFNfromDB);
 
 	/* if not specifed on command line, get flight number from db */
-	if(getFNfromDB) getDbFlNum(conn, &flNum);
+	if (getFNfromDB) getDbFlNum(conn, &flNum);
 
 	/* set up libdc1394 object */		
 	if ( !(d=dc1394_new()) ) return 1;
