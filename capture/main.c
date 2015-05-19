@@ -391,7 +391,7 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 				case 'f':
 					*filePrefix = argv[++i];
 					break;
-				case 'd':
+				case 'h':
 					*dbHost = argv[++i];
 					*getFNfromDB = 1;
 					break;
@@ -425,8 +425,8 @@ void printArgsError(char *cmd){
 	/* this function is called when there is impropper input on the
 	   command line. It displays some help for the user and _exits */
 	printf("improper usage - use format:\n");
-	printf("%s [-c <configFile>] [-f <file prefix>] [-d <db host>] <flightnumber>\n", cmd);
-	printf("\tNOTE: you must specify a flight number or use -d to get from database\n\n");
+	printf("%s [-c <configFile>] [-f <file prefix>] [-h <db host>] <flightnumber>\n", cmd);
+	printf("\tNOTE: you must specify a flight number or use -h to get from database\n\n");
 	exit(1);
 }
 

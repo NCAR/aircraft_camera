@@ -6,7 +6,7 @@ Capture
 
 .SH SYNOPSIS
 .P
-capture [-w] [-c <config file>] [-f <file prefix>] [-d <database host>] <flight number>
+capture [-w] [-c <config file>] [-f <file prefix>] [-h <database host>] <flight number>
 .P
 If you specify a database, the flight number will be pulled from the global_attributes table, otherwise you must specify a flight number on the command line.
 
@@ -51,7 +51,7 @@ Specify the directory in which the output images will be placed. The direction o
 
 .P
 .B
-	-d 
+	-h 
 database_host
 .RS
 Specify the hostname or ip address of the postgreSQL server that you want this capture program to update. The program will extract the flight number from the global_attributes table on the database on the specified host, It will then create a table called camera with the following structure:
@@ -79,7 +79,7 @@ If you do not specify a database, you must manually specify the flight number (u
 .P
 Start capturing using the local config file, update the database on acserver, and store images in the directory /mnt/r2/camera_images/flight_number_<flight_number_from_database>/<camera_direction>/<timestamp>.jpg:
 .P
-capture -c ./cameras.conf -d acserver -f /mnt/r2/camera_images/flight_number_
+capture -c ./cameras.conf -h acserver -f /mnt/r2/camera_images/flight_number_
 
 .SH AUTHOR
 Dan Lagreca 

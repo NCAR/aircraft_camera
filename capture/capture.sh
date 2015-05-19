@@ -23,7 +23,7 @@ start() {
 		$logit "Starting capture - Change above in /etc/init.d/capture"
 
 		#start capture program
-		($capture -c $CONF -f $LOC -d $dbHOST -w) &
+		($capture -c $CONF -f $LOC -h $dbHOST -w) &
 
 		cap_pid=$!
 		$logit "started capture [pid: $cap_pid]"
