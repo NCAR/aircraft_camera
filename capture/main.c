@@ -56,7 +56,7 @@ typedef struct
         camConf_t *camConfig;
         dc1394video_frame_t *frame;
         dc1394_t *d;
-}   parm; 
+} parm; 
 
 int main(int argc, char *argv[])
 {
@@ -232,8 +232,8 @@ int main(int argc, char *argv[])
 }
 
 
-int bus_count_changed(dc1394_t *d, int numCams) {
-	
+int bus_count_changed(dc1394_t *d, int numCams)
+{
 	int n;
 	dc1394error_t err;	
 	dc1394camera_list_t * list; 
@@ -245,7 +245,6 @@ int bus_count_changed(dc1394_t *d, int numCams) {
 	dc1394_camera_free_list(list);		//release camera list struct
 	if (n != numCams) return 1;
 	else return 0;
-
 }
 
 void wait_for_camera(dc1394_t *d)
@@ -349,12 +348,13 @@ void finishUp(int sig){
 	interrupted = 1;
 }
 
-void getTime(char *s1, char *s2){
-/* This function updates the strings passed in to the current date and time,
-	formatted as follows:
-	s1 (for image name): YYMMDD-HHMMSS 
-	s2 (for status packet): YYYY-MM-DD HH:MM:SS
-*/
+void getTime(char *s1, char *s2)
+{
+	/* This function updates the strings passed in to the current date and time,
+	 * formatted as follows:
+	 * s1 (for image name): YYMMDD-HHMMSS 
+	 * s2 (for status packet): YYYY-MM-DD HH:MM:SS
+	 */
 	struct tm *t;
 	time_t rawtime;
 
@@ -369,7 +369,8 @@ void getTime(char *s1, char *s2){
 	return;
 }
 
-void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, char **dbHost, char **flNum, int *getFNfromDB, int *wait){
+void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, char **dbHost, char **flNum, int *getFNfromDB, int *wait)
+{
 
 	int i=0;
 	char opt; 
@@ -379,7 +380,8 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 
 	/* set to NULL, so we can apply defaults if needed later */
 	*flNum = *confFile = *filePrefix = *dbHost = NULL;
-	*getFNfromDB = *wait = 0;
+	*getFNfromDB = 1;
+	*wait = 0;
 
 	while (i<argc) {
 		if (*argv[i] == '-'){
@@ -390,10 +392,10 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 					break;
 				case 'f':
 					*filePrefix = argv[++i];
+					*getFNfromDB = 0;
 					break;
 				case 'h':
 					*dbHost = argv[++i];
-					*getFNfromDB = 1;
 					break;
 				case 'w':
 					*wait = 1;
@@ -406,6 +408,7 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 	}
 	
 	/* if the params were not set, use the default vals */
+	if (*flNum == NULL) *flNum = "";
 	if (*flNum == NULL && !(*getFNfromDB)) printArgsError(argv[0]);
 	if (*confFile == NULL) defaults(confFile, CONFIG_FILE);
 	if (*filePrefix == NULL) defaults(filePrefix, FILE_PREFIX);
@@ -413,27 +416,32 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 
 }
 
-char *defaults(char **arg, char *value){
-	/* allocates memory for the value, and copies the string into the new location*/
+char *defaults(char **arg, char *value)
+{
+	/* allocates memory for the value, and copies the string into the new location
+	 */
 //	printf("size of: '%s' is %d\n", value, sizeof(char)*strlen(value));
 	*arg = malloc(sizeof(char)*strlen(value)+1);
 	strcpy(*arg, value);
 	return *arg;
 }
 
-void printArgsError(char *cmd){
+void printArgsError(char *cmd)
+{
 	/* this function is called when there is impropper input on the
-	   command line. It displays some help for the user and _exits */
+	 * command line. It displays some help for the user and _exits
+	 */
 	printf("improper usage - use format:\n");
 	printf("%s [-c <configFile>] [-f <file prefix>] [-h <db host>] <flightnumber>\n", cmd);
-	printf("\tNOTE: you must specify a flight number or use -h to get from database\n\n");
+	printf("\tNOTE: you must specify a flight number or use -f.\n\n");
 	exit(1);
 }
 
 void * worker(void *arg[])
-	/* This function is an interface to the multi-threaded aspect of the program.  Each 
- 	   pthread calls the worker function */
 {
+	/* This function is an interface to the multi-threaded aspect of the program.  Each 
+ 	 * pthread calls the worker function
+ 	 */
 	parm *p = (parm *) arg;
         saveIMG(p->image_file_name, p->camConfig, p->frame, p->d);
         return NULL;
