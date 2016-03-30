@@ -69,6 +69,7 @@ use Image::Magick;		# Non-standard ImageMagick extensions.
 use Sys::Hostname;		# standard module for determining hostname.
 use Time::Local;
 use POSIX qw(strftime);
+use Env;
 
 # -------------------------------------------------------------------
 # ------------------------ Hardcoded values -------------------------
@@ -125,12 +126,16 @@ my ($projectNumber,$flightNumber,$time_interval,$headerText,$outputFileTimes);
 # -------------------------------------------------------------------
 # ----------------------------- Usage -------------------------------
 # -------------------------------------------------------------------
-
+#ffmpeg is only installed in tikal, so must run there
+if ($HOST !~/tikal/) {
+        print " MUST BE RUN ON tikal!!!\n\n";
+        exit(0);
+}
 #if no arguments or argument is "-h", print help text and exit.
 if ( (scalar(@ARGV) < 2) || (scalar(@ARGV) > 3)  || ($ARGV[0] eq "-h") ) {
 	print "\n Perl script to generate annotated movies from images\n";
 	print " USAGE: $0  parameterFileName <flight eg. rf01> [startnum]\n";
-	print " MUST BE RUN ON BORA or GNI!!!\n\n";
+	print " MUST BE RUN ON tikal!!!\n\n";
 	print "\n";
 	print " The parameter file is an ascii file containing the following";
 	print " lines:\n";
@@ -142,7 +147,7 @@ if ( (scalar(@ARGV) < 2) || (scalar(@ARGV) > 3)  || ($ARGV[0] eq "-h") ) {
 	print " given in netCDF file, eg:\n";
 	print "GGALT\nGGLAT\nGGLON\n...\n";
 	print "endVariablesLT\n";
-	exit(1);
+	exit(0);
 }
 
 # Initialize image objects. 
