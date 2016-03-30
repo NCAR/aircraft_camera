@@ -107,6 +107,7 @@ my %possible_keywords = ( # value = description, default
     "mp4BitRate" => (" eg 1500000"),
     "crop" => ("cropGeometry"),
     "includeProjectName" => (" no or yes"),
+    "includeProjectNumber" => (" no or yes"),
     "numCameras" => ("default = 1"),
     "imageDir2" => ("can use #### to indicate flight, e.g. rf01"),
     "gravity2" => ("SouthWest, North, etc"),
@@ -193,6 +194,7 @@ if (!$found) {die "Unknown camera! \n";}
 
 if (!$keywords->{numCameras}) {$keywords->{numCameras} = 1;}
 if (!$keywords->{includeProjectName}) {$keywords->{includeProjectName}="no";}
+if (!$keywords->{includeProjectNumber}) {$keywords->{includeProjectNumber}="no";}
 if (!$keywords->{overlayImageTime}) {$keywords->{overlayImageTime}="no";}
 if (!$keywords->{outputWidth}) {$keywords->{outputWidth}=200;}
 
@@ -536,12 +538,12 @@ my $mp4BitRate = $keywords->{mp4BitRate};;
 my $outputFilename = "$flightNumber.$outputFileTimes.mp4";
 # First ffmpeg pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 1 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 1"};
-my $command = "/usr/bin/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 1 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{movieDirectory}."/$outputFilename";
+my $command = "/usr/bin/ffmpeg -r:$outputFrameRate -b:$mp4BitRate -y -i $annotatedImageDirectory/%05d.jpg -passlogfile ./ffmpeg_$flightNumber -pass 1".$keywords->{movieDirectory}."/$outputFilename";
 print "$command\n";
 if (system "$command") { die "Unable to create MPEG file $outputFilename, pass 1 using command $command"}; 
 # Second pass.
 #if (system "ffmpeg -passlogfile ~/ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -title $projectNumber$flightNumber -author 'S. Beaton NCAR/RAF' -pass 2 -i $annotatedImageDirectory/%05d.jpg ~/$flightNumber.mp4") {die "Unable to create MPEG file $flightNumber.mp4, pass 2"};
-$command = "/usr/bin/ffmpeg -passlogfile ./ffmpeg_$flightNumber -r $outputFrameRate -b $mp4BitRate -y -pass 2 -i $annotatedImageDirectory/%05d.jpg ".$keywords->{movieDirectory}."/$outputFilename";
+$command = "/usr/bin/ffmpeg -r:$outputFrameRate -b:$mp4BitRate -y -i $annotatedImageDirectory/%05d.jpg -passlogfile ./ffmpeg_$flightNumber -pass 2".$keywords->{movieDirectory}."/$outputFilename";
 print "$command\n";
 if (system "$command") {die "Unable to create MPEG file $outputFilename, pass 2 using command $command"};
 
@@ -689,15 +691,20 @@ sub dump_netcdfFile_header() {
 
     # Read project name from netcdf file if requested
     # match on yes, ignoring case.
-    my $projectName='';		# Empty string.
+    my $projectName;		# Empty string.
     if ($keywords->{includeProjectName} =~ m/yes/i) { 
-	seek (HEADER_DUMP_FILE, 0,0);
-	$projectName=($tempVar[0] =~ /^\s+:ProjectName = "(.*)"/);
+        seek(HEADER_DUMP_FILE,0,0);
+        @tempVar=grep(/:ProjectName =/, <HEADER_DUMP_FILE>);
+        ($projectName)=($tempVar[0] =~ /^\s+:ProjectName = "(.*)"/);
     }
 
-    seek(HEADER_DUMP_FILE,0,0);
-    @tempVar=grep(/:ProjectNumber =/, <HEADER_DUMP_FILE>);
-    (my $projectNumber)=($tempVar[0] =~ /^\s+:ProjectNumber = "(.*)"/);
+    my $projectNumber;	# Empty string.
+    if ($keywords->{includeProjectNumber} =~ m/yes/i) { 
+        seek(HEADER_DUMP_FILE,0,0);
+        @tempVar=grep(/:ProjectNumber =/, <HEADER_DUMP_FILE>);
+        ($projectNumber)=($tempVar[0] =~ /^\s+:ProjectNumber = "(.*)"/);
+    }
+
 
     seek(HEADER_DUMP_FILE,0,0);
     @tempVar=grep(/:FlightNumber =/, <HEADER_DUMP_FILE>);
@@ -757,7 +764,7 @@ sub create_n2asc_batchfile() {
       or die "Can't open ascii batch file $batchFile\n";
   print BATCH_FILE "if=$keywords->{netcdfFile}\nof=$dataFile\n";
   #print BATCH_FILE "ti=2000-01-01,00:00:00~2008-12-31,23:59:59\n";
-  print BATCH_FILE "ti=$time_interval\n";
+  #print BATCH_FILE "ti=$time_interval\n";
 
 
   while (<PARAMETERS_FILE>) {
