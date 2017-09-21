@@ -2,7 +2,7 @@ OBJECTS = main.o getIMG.o parseFile.o writejpeg.o writepng.o pgFuncs.o multicast
 CFLAGS = -Wall -Wextra -g  -pg #-DDEBUG
 CXXFLAGS = -Wall -Wextra -g -pg
 DCLIB = -ldc1394
-LIBS = $(DCLIB) -ljpeg -lpng -lpq -lexiv2
+LIBS =$(DCLIB) -lpthread -ljpeg -lpng -lpq -lexiv2
 
 all: capture capture_reset_bus
 
