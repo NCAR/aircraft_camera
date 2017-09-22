@@ -4,7 +4,7 @@
 
 # Set these vars correctly for your setup
 dbHOST='acserver'				# real-time postgres db hostname
-capture='/usr/bin/capture'			# path to capture program
+capture='/bin/capture'			# path to capture program
 LOC=`get_ac_config.py cameras.path`		#location where images will be stored
 CONF='/etc/capture.conf'			#location of camera configuration file
 monitor_script="/usr/sbin/capture_monitor.sh $dbHOST $0"
