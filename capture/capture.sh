@@ -16,7 +16,7 @@ start() {
 	$logit "capture ps: $capPS"
 
 	# make sure no other capture process is running 
-	if ! ps h -C capture > /dev/null
+	if ! ps h -C capture | grep -v "[capture]" > /dev/null
 	then
 		$logit "Starting capture - dbHOST: $dbHOST"
 		$logit "Starting capture - LOC: $LOC"
