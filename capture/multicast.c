@@ -62,7 +62,7 @@ void multicast_status_init(status_t *status, camConf_t **camArray, int numCams)
     {
       char host[128];
       getnameinfo(cursor->ifa_addr, sizeof(struct sockaddr_in), host, 128, NULL, 0, NI_NUMERICHOST);
-      if (strncmp(host, "192.168.184", 11))     // This is the interface we want.
+      if (strncmp(host, "192.168.84", 10))     // This is the interface we want.
         continue;
 
       // Create socket
@@ -189,5 +189,6 @@ void multicast_send_packet(char *packet)
   if (sendto(fd, packet, strlen(packet), 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
     if (count++ % 10 == 0)
       syslog(LOG_ERR, "failed to send Multicast status %ld times; errno=%d, fd=%d", count, errno, fd);
+      syslog(LOG_ERR, "  [%s]", packet);
   }
 }
