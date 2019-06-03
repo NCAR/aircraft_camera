@@ -99,7 +99,7 @@ rm -rf $RPM_BUILD_ROOT
 - added a make clean in case .o files exist prior to make
 - no longer requires libpqxx libraries
 
-* Thu Jul 29 2011 <wasinger@ucar.edu> 0.5-1
+* Thu Jul 28 2011 <wasinger@ucar.edu> 0.5-1
 - fixed /etc/init.d/capture:
 -   starts were not detecting previous starts
 -   stops were not stopping
