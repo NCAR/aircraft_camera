@@ -115,6 +115,7 @@ void multicast_clean_up(status_t *status)
   status->health = 0;
   multicast_send_final(status);
   close(fd);
+  fd = -1;	// reset, since init will be checking this value.
 
   for (i=0; i<status->numCams; i++){
     free(status->cam_row[i]);
