@@ -1,4 +1,4 @@
-#include "multicast.h" 
+#include "multicast.h"
 
 #define MULTICAST_PORT 30001
 #define MULTICAST_GROUP "239.0.0.10"
@@ -9,8 +9,8 @@ static struct sockaddr_in addr;
 static int fd = -1;
 
 
-/* This function allocates memory for all of the data contained in the status 
- * structure. The size of memory needed varies by the number of cameras on 
+/* This function allocates memory for all of the data contained in the status
+ * structure. The size of memory needed varies by the number of cameras on
  * the bus as well as the current settings in the config file.
  */
 void multicast_status_init(status_t *status, camConf_t **camArray, int numCams)
@@ -21,7 +21,7 @@ void multicast_status_init(status_t *status, camConf_t **camArray, int numCams)
   status->html = 0;
   status->numCams = numCams;
 //	printf("numcams: %d", numCams);
-	
+
   status->lastSize = malloc(sizeof(int) * numCams);
   status->runningAvg = malloc(sizeof(float) * numCams);
   status->cam_row = malloc(sizeof(char *) * numCams);
@@ -86,7 +86,7 @@ void multicast_status_init(status_t *status, camConf_t **camArray, int numCams)
   freeifaddrs(addrs);
 
   /* set up destination address */
-  memset(&addr, 0, sizeof(addr)); 	//zero out addr struct
+  memset(&addr, 0, sizeof(addr));	//zero out addr struct
   addr.sin_family = AF_INET;		//set to inet socket (i.e. not UNIX)
   addr.sin_addr.s_addr = inet_addr(MULTICAST_GROUP);	//set IP address (multicast group)
   addr.sin_port = htons(MULTICAST_PORT);	//set port to send data on
@@ -94,13 +94,13 @@ void multicast_status_init(status_t *status, camConf_t **camArray, int numCams)
 
 /* This function sends the final status multicast packet before the program terminates.
  * It sets health to 0, because the program is ending. Then it sends a packet with
- * 'shut down' as the message. 
+ * 'shut down' as the message.
  */
 void multicast_send_final(status_t *status)
 {
   char *pkt;
   pkt = malloc(sizeof(char) * (strlen(PACKET_BASE) + strlen(status->clock) + 11));
-  sprintf(pkt, PACKET_BASE, status->clock, 0, "shut down"); 
+  sprintf(pkt, PACKET_BASE, status->clock, 0, "shut down");
   multicast_send_packet(pkt);
   free(pkt);
 }
@@ -110,28 +110,28 @@ void multicast_send_final(status_t *status)
  */
 void multicast_clean_up(status_t *status)
 {
-	int i;
+  int i;
 
-	status->health = 0;	
-	multicast_send_final(status);
-        close(fd);
+  status->health = 0;
+  multicast_send_final(status);
+  close(fd);
 
-	for (i=0; i<status->numCams; i++){
-		free(status->cam_row[i]);
-		free(status->latest[i]);
-	}
-	free(status->cam_row);
-	free(status->latest);
-	free(status->lastSize);
-	free(status->runningAvg);
+  for (i=0; i<status->numCams; i++){
+    free(status->cam_row[i]);
+    free(status->latest[i]);
+  }
+  free(status->cam_row);
+  free(status->latest);
+  free(status->lastSize);
+  free(status->runningAvg);
 
-	return;
+  return;
 }
 
 int multicast_send_status(status_t *status) {
-/* This function takes the data from a status_t struct and arranges it into the 
+/* This function takes the data from a status_t struct and arranges it into the
 	standard multicast packet form described here: http://wiki.eol.ucar.edu/sew/Aircraft/Handbook
-*/	
+*/
 	char *rows, *packet;
 	char row[500];
 	int i;
@@ -148,28 +148,28 @@ int multicast_send_status(status_t *status) {
 
 	/* write data specific to each cam into a row, add to to "rows" string */
 	for (i=0; i<status->numCams; i++) {
-		sprintf(row, "<tr>%s<td>%s</td><td>%d B</td><td>%f B</td></tr>", status->cam_row[i], 
+		sprintf(row, "<tr>%s<td>%s</td><td>%d B</td><td>%f B</td></tr>", status->cam_row[i],
 			status->latest[i], status->lastSize[i], status->runningAvg[i]);
 		strcat(rows, row);
 	}
 
-	/* make sure "html" string has enough space for all the data */ 
-	status->html = (char*) realloc(status->html, sizeof(char) * 
+	/* make sure "html" string has enough space for all the data */
+	status->html = (char*) realloc(status->html, sizeof(char) *
 		(strlen(TABLE_BASE) + strlen(rows)));
 	if (!status->html) { //could not allocate space for html!
 		free(rows);
-		return 0; 
+		return 0;
 	}
 
 	/* build final "html" string */
 	sprintf(status->html, TABLE_BASE, rows);
 
-	/* make sure "packet" string has enough space for all the data */ 
-	packet = malloc( sizeof(char) * 
+	/* make sure "packet" string has enough space for all the data */
+	packet = malloc( sizeof(char) *
 		(strlen(PACKET_BASE) + strlen(status->clock) + strlen(status->html)));
 	if (!packet) { //could not allocate space for html!
 		free(rows);
-		return 0; 
+		return 0;
 	}
 
 	/* build final packet to be sent via multicast */
