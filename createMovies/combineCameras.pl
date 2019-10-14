@@ -308,9 +308,9 @@ print "Annotated images will be stored in $annotatedImageDirectory\n";
 #---------------------- Delete temporary files -----------------------
 # --------------------------------------------------------------------
 
-#unlink $batchFile;
-#unlink $headerDump;
-#unlink $dataFile;
+unlink $batchFile;
+unlink $headerDump;
+unlink $dataFile;
 
 # --------------------------------------------------------------------
 #---------------------- End of Initialization ------------------------
@@ -420,11 +420,9 @@ foreach my $fileName (@jpegFiles) {
 	    $addtl_cameras += 1;
 	}
 
-
 	# Determine the output image filename.
 	my $outputImageName=
 	    sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
-
 	###############
 	# flight data #
 	###############
@@ -492,7 +490,7 @@ foreach my $fileName (@jpegFiles) {
 	            $dataTime =~ s/://g;
 	        }
 	        print "data final $dataTime\n";
-	
+                system("rm /tmp/magick-*");	
 	        # Create the data string.
 	        if ($haveData == 1) {
 	            my @dataItems = split(',',shift(@flightData));
