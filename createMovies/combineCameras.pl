@@ -423,6 +423,7 @@ foreach my $fileName (@jpegFiles) {
 	# Determine the output image filename.
 	my $outputImageName=
 	    sprintf('%s/%05d.jpg',$annotatedImageDirectory,$fileNum);
+            system("rm /tmp/magick-*");
 	###############
 	# flight data #
 	###############
@@ -490,7 +491,6 @@ foreach my $fileName (@jpegFiles) {
 	            $dataTime =~ s/://g;
 	        }
 	        print "data final $dataTime\n";
-                system("rm /tmp/magick-*");	
 	        # Create the data string.
 	        if ($haveData == 1) {
 	            my @dataItems = split(',',shift(@flightData));
