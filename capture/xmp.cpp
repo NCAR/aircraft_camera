@@ -1,7 +1,7 @@
 #include <dc1394/dc1394.h>
 #include <exiv2/image.hpp>
 #include <exiv2/pngimage.hpp>
-#include <exiv2/xmp.hpp>
+#include <exiv2/xmp_exiv2.hpp>
 #include <iostream>
 #include <iomanip>
 #include <string>
