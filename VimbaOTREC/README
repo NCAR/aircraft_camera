@@ -1,0 +1,20 @@
+From Stuart Beaton:
+
+Attached is the program I modified for OTREC down camera (Allied Vision Prosilica GT4907).
+Essential mod was putting in a while(1) loop. Others mods set up the camera brightness,
+binning, etc. 
+This is the SynchronousGrab program (VimbaC/Examples/SynchronousGrab/Source/SynchronousGrab.c),
+so it sets up one buffer and requests a single image from the camera. This is called by
+program.c (same directory) which pretty much just reads command line options and calls
+SychronousGrab.
+
+Examples/AsynchronousGrab might be a better starting point. It sets up multiple buffers
+and the camera fills them as fast as possible, and can do other things while the buffer
+is filling.
+
+I did a little experimenting with Async...Grab on Shannons old computer with linux.
+With Async and no modifications I got 6.87 frames per second using 33% of CPU according
+to top. Then increased the number of frame buffers from 3 to 6, no change. But when I set
+the MTU to 9000, frames/sec went up to 7.1 while CPU usage dropped to 9.8. So it might be
+worthwhile, if you don't have  to go through any hubs, to enable jumbo frames on the
+computer.
