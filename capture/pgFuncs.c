@@ -1,4 +1,5 @@
-#include "pgFuncs.h"	
+#include "pgFuncs.h"
+
 extern int interrupted;
 
 int connectDB(PGconn **conn, char* dbHost, int getFNfromDB) {
@@ -37,7 +38,7 @@ void cleanUpDB(PGconn *conn){
 		res = PQexec(conn, "UPDATE camera SET status=0, message='Recording Stopped'");
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 			syslog(LOG_ERR, "update table failed: %s", PQerrorMessage(conn));
-		} 
+		}
 
 	} else {
 		res = PQexec(conn,
@@ -54,15 +55,15 @@ void cleanUpDB(PGconn *conn){
 int initTable(PGconn * conn){
 /* This function clears the old camera table and sets up a new one */
 
-	char command[500]; 
+	char command[500];
 	PGresult *res;
-	
+
 	/* drop existing camera table */
 	res = PQexec(conn, "DROP TABLE camera");
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		syslog(LOG_ERR, "drop table failed: %s", PQerrorMessage(conn));
 		PQclear(res);
-	} //else syslog(LOG_NOTICE, "old camera table dropped"); 
+	} //else syslog(LOG_NOTICE, "old camera table dropped");
 
 	/* create new camera table */
 	res = PQexec(conn,
@@ -73,7 +74,7 @@ int initTable(PGconn * conn){
 	} //else syslog(LOG_NOTICE, "new camera table created");
 
 	/* create single row, cameras will be added as array elements */
-	sprintf(command, 
+	sprintf(command,
 		"INSERT INTO camera VALUES (current_timestamp, 0, 'Waiting for Camera', '{0}', '{0}', '{0}')"
 		);
 	res = PQexec(conn, command);
@@ -87,17 +88,17 @@ int initTable(PGconn * conn){
 int initRow(PGconn * conn, camConf_t **camArray, int numCams){
 /* this function sets the values of the camera table */
 	int i;
-	char command[500]; 
+	char command[500];
 	PGresult *res;
 
-	sprintf(command, 
+	sprintf(command,
 		"UPDATE camera SET status=1,message='Recording'"
 		);
 	res = PQexec(conn, command);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		syslog(LOG_ERR, "update status failed: %s", PQerrorMessage(conn));
 		PQclear(res);
-	} 
+	}
 
 	/* fill in array with camera data */
 	for (i=0; i<numCams; i++) {
@@ -107,7 +108,7 @@ int initRow(PGconn * conn, camConf_t **camArray, int numCams){
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 			syslog(LOG_ERR, "update camera failed: %s", PQerrorMessage(conn));
 			PQclear(res);
-		} else syslog(LOG_NOTICE, "added camera: %llx to db", camArray[i]->guid); 
+		} else syslog(LOG_NOTICE, "added camera: %llx to db", camArray[i]->guid);
 	}
 
 	PQclear(res);
@@ -133,8 +134,8 @@ int updatePostgres(PGconn *conn, const char * img_name, int camNum)
 		PQclear(res);
 	}
 
-	res = PQsendQuery(conn, command);
-	
+	PQsendQuery(conn, command);
+
 	while ( (res = PQgetResult(conn)) )
 	{
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -154,7 +155,7 @@ int getDbFlNum(PGconn *conn, char **flNum) {
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		syslog(LOG_ERR, "could not get flight number from DB: %s", PQerrorMessage(conn));
 		exit(1);
-	} 
+	}
 	else defaults(flNum,trimWhiteSpace(PQgetvalue(res, 0, 0)));
 	return 1;
 }
@@ -163,7 +164,7 @@ char *trimWhiteSpace(char *input) {
 	/* this function sets the end of a string at the first instance of two spaces
 	   it is useful for trimming whitespace at the end of a string:
 		i.e 'hello Tom \n and Jerry' => 'hello Tom'
-			'rf09	   '	 => 'rf09' 
+			'rf09	   '	 => 'rf09'
 	*/
 
 	int i=0;
