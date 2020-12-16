@@ -129,10 +129,11 @@ void multicast_clean_up(status_t *status)
   return;
 }
 
-int multicast_send_status(status_t *status) {
-/* This function takes the data from a status_t struct and arranges it into the
-	standard multicast packet form described here: http://wiki.eol.ucar.edu/sew/Aircraft/Handbook
-*/
+int multicast_send_status(status_t *status)
+{
+	/* This function takes the data from a status_t struct and arranges it into the
+	 * standard multicast packet form described here: http://wiki.eol.ucar.edu/sew/Aircraft/Handbook
+	 */
 	char *rows, *packet;
 	char row[500];
 	int i;

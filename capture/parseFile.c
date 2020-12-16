@@ -4,10 +4,11 @@
 
 #include "parseFile.h"
 
-int getConf(const char *filename, long long guidIN, camConf_t *camConf){ 
-/*fills in the camConf with all available data from the conf file (specified
-  by "filename". The rest of the settings will get default values */
-
+int getConf(const char *filename, long long guidIN, camConf_t *camConf)
+{
+	/* fills in the camConf with all available data from the conf file (specified
+	 * by "filename". The rest of the settings will get default values
+	 */
 	int foundID = 0;
 	FILE *file;
 	char param[100], value[100], line[200];
@@ -26,14 +27,14 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 
 	while(!feof(file)){
 		/* get one line (if line is longer than 200 chars, this might break)
-		   we want to find all of the lines between the specified GUID and 
+		   we want to find all of the lines between the specified GUID and
 		   the next GUID in the file. Then we want to parse those lines */
 		fgets(line, 200, file);
-		
+
 		/* if line is not a comment, parse it */
 		if (decoment(line) && strcmp(line, "")){
 			sscanf(line, "%s %s", param, value);
-		
+
 			/* is this line a new camera ? */
 			if (!strcmp(param, "camID")){
 
@@ -41,7 +42,7 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 				if(foundID){
 					foundID = 0;
 					fclose(file);
-					return 1; 
+					return 1;
 				}
 
 				/* check to see if this is the camID we want */
@@ -51,16 +52,14 @@ int getConf(const char *filename, long long guidIN, camConf_t *camConf){
 						foundID = 1;
 					}
 				}
-			} 
+			}
 
 			/* if it's under our camID, parse this line for data */
 			else if (foundID) {
 				fillConf(camConf, param, value);
 			}
-			
-			
 		}
-	}	
+	}
 
 	fclose(file);
 	return foundID;
@@ -72,7 +71,7 @@ int decoment (char* s){
 	int i;
 
 	if (s[0] == '#') return 0; //the whole string is a comment
-	
+
 	for (i=0; s[i]; i++){
 		if (s[i] == '#' || s[i] == '\n') {
 			s[i] = '\0';
@@ -84,7 +83,7 @@ int decoment (char* s){
 }
 
 void fillConf(camConf_t *camConf, char* param, char* value){
-/*interprets the param and places the value into the correct 
+/*interprets the param and places the value into the correct
 	part of the camConf struct*/
 	strLower(param);
 	strLower(value);
@@ -95,7 +94,7 @@ void fillConf(camConf_t *camConf, char* param, char* value){
 		if(!strcmp(strLower(value), "100"))
 			camConf->iso = DC1394_ISO_SPEED_100;
 		else if(!strcmp(strLower(value), "200"))
-			camConf->iso = DC1394_ISO_SPEED_200; 
+			camConf->iso = DC1394_ISO_SPEED_200;
 		else if(!strcmp(strLower(value), "400"))
 			camConf->iso = DC1394_ISO_SPEED_400;
 		else if(!strcmp(strLower(value), "800"))
@@ -174,7 +173,7 @@ void applyDefaults(camConf_t *camConf){
 	camConf->whiteBalance_red = 75;
 	camConf->whiteBalance_blue = 75;
 	camConf->nightThreshold = 85;
-	camConf->mode = DC1394_VIDEO_MODE_FORMAT7_0; 
+	camConf->mode = DC1394_VIDEO_MODE_FORMAT7_0;
 	camConf->coding = DC1394_COLOR_CODING_RAW8;
 	camConf->bayerMethod = DC1394_BAYER_METHOD_BILINEAR;
 	camConf->raw = 0;
@@ -185,8 +184,9 @@ void applyDefaults(camConf_t *camConf){
 	strcpy(camConf->flNum,"none");
 }
 
-char *strLower(char *s){
-/*converts the string passed in to all lower case*/
+char *strLower(char *s)
+{
+	/*converts the string passed in to all lower case*/
 
 	int i;
 	for (i=0; s[i]; i++)
@@ -194,5 +194,3 @@ char *strLower(char *s){
 
 	return s;
 }
-
-

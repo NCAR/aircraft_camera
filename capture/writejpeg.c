@@ -1,6 +1,6 @@
 /*
  * This program is largly based off of the example.c file included
- * with libjpeg. It is used to compress IEEE1394 camera images to 
+ * with libjpeg. It is used to compress IEEE1394 camera images to
  * jpeg format
  */
 
@@ -32,10 +32,10 @@ void write_JPEG_file (	const char * filename, int quality, int image_height, int
   jpeg_stdio_dest(&cinfo, outfile);
 
   /* Step 3: set parameters for compression */
-  cinfo.image_width = image_width; 	/* image width and height, in pixels */
+  cinfo.image_width = image_width;	/* image width and height, in pixels */
   cinfo.image_height = image_height;
   cinfo.input_components = 3;		/* # of color components per pixel */
-  cinfo.in_color_space = JCS_RGB; 	/* colorspace of input image */
+  cinfo.in_color_space = JCS_RGB;	/* colorspace of input image */
 
   jpeg_set_defaults(&cinfo);
   jpeg_set_quality(&cinfo, quality, TRUE /* limit to baseline-JPEG values */);

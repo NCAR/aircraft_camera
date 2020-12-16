@@ -2,22 +2,22 @@
 #include <time.h>
 
 /*
- * The purpose of this program is to collect and archive images from 
+ * The purpose of this program is to collect and archive images from
  * IEEE1394 scientific cameras.
  */
 
 #include <dc1394/dc1394.h>
 #include <inttypes.h>
-#include <libpq-fe.h>	//for postgres
+#include <libpq-fe.h>	// for postgres
 #include <stdint.h>
 #include <stdio.h>
-#include <signal.h> 	//for catching kill signals
-#include <stdlib.h>	
+#include <signal.h>	// for catching kill signals
+#include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h> 	//for waitpid
+#include <sys/wait.h>	// for waitpid
 #include <syslog.h>
-#include <time.h> 		//for timestamp
-#include <unistd.h> 	//for sleep, fork
+#include <time.h>	// for timestamp
+#include <unistd.h>	// for sleep, fork
 #include <pthread.h>    // for multi-threading
 
 #include "getIMG.h"
@@ -56,7 +56,7 @@ typedef struct
         camConf_t *camConfig;
         dc1394video_frame_t *frame;
         dc1394_t *d;
-} parm; 
+} parm;
 
 int main(int argc, char *argv[])
 {
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	char timeStr[20];
 	status_t statMC;			// struct to hold cumulative status data
 	camConf_t **camArray = NULL;		// array to hold settings from conf file
-	PGconn *conn; 				// postgresql database connection
+	PGconn *conn;				// postgresql database connection
 	pid_t cpid;				// PID for timing process
 	dc1394_t * d;				// dc1394 base class (for scanning the bus)
 	char *conf, *prefix, *dbHost, *flNum;	// ptrs for command line arguements
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 	/* if not specifed on command line, get flight number from db */
 	if (getFNfromDB) getDbFlNum(conn, &flNum);
 
-	/* set up libdc1394 object */		
+	/* set up libdc1394 object */
 	if ( !(d=dc1394_new()) ) return 1;
 
 	/* if -w was specified, wait for a camera to show up on the bus */
@@ -105,22 +105,22 @@ int main(int argc, char *argv[])
 	struct tm nt;
 #endif
 
-// TODO: will probably be better to malloc this stuff, but 5 is probably max cameras - 
+// TODO: will probably be better to malloc this stuff, but 5 is probably max cameras -
 	dc1394video_frame_t *frames[MAX_CAMERAS];
 	pthread_t camThreads[MAX_CAMERAS];
         parm* arg;
 
-	/*				 %=== MAIN LOOP HERE ===% 
-	 * keep getting pictures until signal or night detection 
+	/*	 %=== MAIN LOOP HERE ===%
+	 * keep getting pictures until signal or night detection
 	 */
-	while(!interrupted && night<MAX_NIGHT_VAL){
-
+	while(!interrupted && night<MAX_NIGHT_VAL)
+	{
 #ifdef DEBUG
-	gettimeofday(&tv, &tz);
-	localtime_r(&tv.tv_sec, &nt);
-	syslog(LOG_WARNING, "%d:%02d:%02d %3d - Start of camera loop\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000);
-	ms = tv.tv_usec/1000;
-	sec = nt.tm_sec;
+		gettimeofday(&tv, &tz);
+		localtime_r(&tv.tv_sec, &nt);
+		syslog(LOG_WARNING, "%d:%02d:%02d %3d - Start of camera loop\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000);
+		ms = tv.tv_usec/1000;
+		sec = nt.tm_sec;
 #endif
 
 		/* spawn child (timer) process to wait one second, then die */
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
                 arg=(parm *)malloc(sizeof(parm)*camCount);
 
 		/* create space for the frames */
-        	for (i=0; i<MAX_CAMERAS; i++) frames[i] = calloc(1, sizeof(dc1394video_frame_t));
+		for (i=0; i<MAX_CAMERAS; i++) frames[i] = calloc(1, sizeof(dc1394video_frame_t));
 
 		/* main process continues here*/
 		/* Get the current time to use as a name for all image files created in this cycle */
@@ -180,9 +180,9 @@ int main(int argc, char *argv[])
                 free(arg);
                 for (i=0; i<camCount; i++){
 			if (frames[i] != NULL) {
-                        	free(frames[i]->image);
+				free(frames[i]->image);
 				free(frames[i]);
-          		}
+			}
 		}
 
 		/* cleanup and reinit if there are new cams on the bus */
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 			if (bus_count_changed(d, camCount)) {
 				syslog(LOG_WARNING, "warning: bus count changed, reinitializing\n");
 				cleanup_d(&camArray, camCount, &statMC);
-				camCount = reinitialize_d(flNum, d, &camArray, 
+				camCount = reinitialize_d(flNum, d, &camArray,
 					&statMC, &useDB, conn, conf, prefix);
 			}
 		}
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
 		syslog(LOG_WARNING, "%d:%02d:%02d %3d - End of camera loop - %d mSec\n", nt.tm_hour, nt.tm_min, nt.tm_sec, tv.tv_usec/1000, ms );
 		ms = tv.tv_usec/1000;
 		sec = nt.tm_sec;
-#endif 
+#endif
 
 		/* wait for timer (child) process to die before looping again*/
 		waitpid(cpid, NULL, 0);
@@ -235,9 +235,9 @@ int main(int argc, char *argv[])
 int bus_count_changed(dc1394_t *d, int numCams)
 {
 	int n;
-	dc1394error_t err;	
-	dc1394camera_list_t * list; 
-	
+	dc1394error_t err;
+	dc1394camera_list_t * list;
+
 	err=dc1394_camera_enumerate (d, &list);
 	DC1394_ERR_RTN(err,"Failed to enumerate cameras");
 
@@ -279,9 +279,9 @@ int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t
 	int numCams=0, i;
 	char directory[100];
 	camConf_t **camArray;
-	//dc1394camera_t * resCam;		//dc1394 camera class, used here for reset
-	dc1394camera_list_t * list; 	//dc1394 struct to hold list of cams on bus
-	dc1394error_t err;				//dc1394 struct to hold err message,status
+	//dc1394camera_t * resCam;	// dc1394 camera class, used here for reset
+	dc1394camera_list_t * list;	// dc1394 struct to hold list of cams on bus
+	dc1394error_t err;		// dc1394 struct to hold err message,status
 
 	err=dc1394_camera_enumerate (d, &list);
 	DC1394_ERR_RTN(err,"Failed to enumerate cameras");
@@ -295,7 +295,7 @@ int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t
 	}
 
 	/* allocate memory for struct pointers for each cam */
-	camArray = malloc(sizeof(camConf_t*) * numCams); 
+	camArray = malloc(sizeof(camConf_t*) * numCams);
 	*camArray_ptr = camArray;
 
 	/* allocate and fill structs with data from config file */
@@ -311,8 +311,8 @@ int reinitialize_d(char *flNum, dc1394_t *d, camConf_t ***camArray_ptr, status_t
 
 	/* create image directory structure */
 	for (i=0; i<numCams; i++){
-		sprintf(directory, "mkdir -p -m 777 %s%s/%s &> /dev/null", prefix, 
-				flNum, camArray[i]->direction); 
+		sprintf(directory, "mkdir -p -m 777 %s%s/%s &> /dev/null", prefix,
+				flNum, camArray[i]->direction);
 		system(directory);
 	}
 
@@ -352,7 +352,7 @@ void getTime(char *s1, char *s2)
 {
 	/* This function updates the strings passed in to the current date and time,
 	 * formatted as follows:
-	 * s1 (for image name): YYMMDD-HHMMSS 
+	 * s1 (for image name): YYMMDD-HHMMSS
 	 * s2 (for status packet): YYYY-MM-DD HH:MM:SS
 	 */
 	struct tm *t;
@@ -373,7 +373,7 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 {
 
 	int i=0;
-	char opt; 
+	char opt;
 	if (argc <= 1) {
 		printArgsError(argv[0]);
 	}
@@ -406,7 +406,7 @@ void parseInputLine(int argc, char **argv, char **confFile, char **filePrefix, c
 		} else if (i>0) *flNum = argv[i];
 		i++;
 	}
-	
+
 	/* if the params were not set, use the default vals */
 	if (*flNum == NULL) *flNum = "";
 	if (*flNum == NULL && !(*getFNfromDB)) printArgsError(argv[0]);
@@ -440,8 +440,8 @@ void printArgsError(char *cmd)
 void * worker(void *arg[])
 {
 	/* This function is an interface to the multi-threaded aspect of the program.  Each 
- 	 * pthread calls the worker function
- 	 */
+	 * pthread calls the worker function
+	 */
 	parm *p = (parm *) arg;
         saveIMG(p->image_file_name, p->camConfig, p->frame, p->d);
         return NULL;
