@@ -1,13 +1,5 @@
 #!/bin/sh
 
-if grep -q Fedora /etc/redhat-release; then
-    echo "Error: noarch RPMs built on Fedora seem to be incompatible with RHEL"
-    echo "Until this is resolved, do this build on a RHEL system."
-    echo "/etc/redhat-release = $(</etc/redhat-release)"
-    echo "rpmbuild --version = " `rpmbuild --version`
-    exit 1
-fi
-
 script=`basename $0`
 
 if [ "$1" == "-h" -o "$1" == "--help" ];then
@@ -25,14 +17,22 @@ case $1 in
     ;;
 esac
 
-source repo_scripts/repo_funcs.sh
-
 get_version () {
     awk '/^Version:/{print $2}' $1
 }
 
-topdir=`get_rpm_topdir`
-rroot=`get_eol_repo_root`
+topdir=${TOPDIR:-$(rpmbuild --eval %_topdir)}
+
+rroot=unknown
+rf=repo_scripts/repo_funcs.sh
+[ -f $rf ] || rf=/net/www/docs/software/rpms/scripts/repo_funcs.sh
+if [ -f $rf ]; then
+    source $rf
+    rroot=`get_eol_repo_root`
+else
+    [ -d /net/www/docs/software/rpms ] && rroot=/net/www/docs/software/rpms
+fi
+
 
 log=/tmp/$script.$$
 trap "{ rm -f $log; }" EXIT
