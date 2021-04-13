@@ -45,11 +45,10 @@ pkg=capture-camserver
 if [ "$dopkg" == all -o "$dopkg" == $pkg ];then
     version=`get_version $pkg.spec`
     mkdir $pkg
-    cp -r * $pkg
+    cp * $pkg
     tar czf ${topdir}/SOURCES/${pkg}-${version}.tar.gz --exclude .svn --exclude "*.swp" $pkg 
     rm -rf $pkg
-    #rpmbuild -ba --clean  ${pkg}.spec | tee -a $log  || exit $?
-    rpmbuild -ba  ${pkg}.spec | tee -a $log  || exit $?
+    rpmbuild -ba --clean  ${pkg}.spec | tee -a $log  || exit $?
 fi
 
 echo "RPMS:"
