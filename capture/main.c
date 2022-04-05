@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	/* set up handler for signal */
 	signal(SIGINT, &finishUp);
 	signal(SIGTERM, &finishUp);
-	signal(SIGHUP, &finishUp);
+	signal(SIGHUP, SIG_IGN);
 
 	/* set up syslog */
 	setlogmask(LOG_UPTO(LOG_DEBUG));
@@ -340,7 +340,7 @@ void finishUp(int sig){
 			syslog(LOG_WARNING, "Caught SIGTERM signal - exiting.");
 			break;
 		case SIGHUP:
-			syslog(LOG_WARNING, "Caught SIGHUP signal - exiting.");
+			syslog(LOG_WARNING, "Caught SIGHUP signal - ignoring.");
 			break;
 		default:
 			syslog(LOG_WARNING, "Should not have gotten here...  exiting.");
